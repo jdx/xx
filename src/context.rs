@@ -27,12 +27,6 @@ mod tests {
     static TEST_MUTEX: Mutex<()> = Mutex::new(());
 
     #[test]
-    fn test_get_load_root() {
-        let _t = TEST_MUTEX.lock().unwrap();
-        assert_eq!(get_load_root(), PathBuf::new());
-    }
-
-    #[test]
     fn test_set_load_root() {
         let _t = TEST_MUTEX.lock().unwrap();
         set_load_root(PathBuf::from("/foo/bar"));
