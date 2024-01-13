@@ -1,0 +1,20 @@
+[package]
+name = "xx"
+version = "0.2.0"
+edition = "2021"
+authors = ["Jeff Dickey (@jdx)"]
+license = "MIT"
+description = "A collection of useful Rust macros and small functions."
+documentation = "https://docs.rs/xx"
+repository = "https://github.com/jdx/xx"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+miette = "5"
+thiserror = "1"
+
+[dev-dependencies]
+once_cell = "1.19.0"
+pretty_assertions = "1"
+tempfile = "3"
