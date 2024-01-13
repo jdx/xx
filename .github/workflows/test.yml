@@ -12,4 +12,4 @@ jobs:
     steps:
       - uses: actions/checkout@v3
       - uses: jdx/mise-action@v2
-      - run: mise ci
+      - run: mise r ci
