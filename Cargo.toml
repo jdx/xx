@@ -13,6 +13,7 @@ repository = "https://github.com/jdx/xx"
 [dependencies]
 miette = "5"
 thiserror = "1"
+log = "0.4"
 
 [dev-dependencies]
 once_cell = "1.19.0"

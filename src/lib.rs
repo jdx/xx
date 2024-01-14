@@ -1,3 +1,6 @@
+#[macro_use]
+extern crate log;
+
 pub use error::{XXError, XXResult};
 
 pub mod context;
