@@ -7,13 +7,14 @@ pub fn get_load_root() -> PathBuf {
     LOAD_ROOT.lock().unwrap().clone().unwrap_or_default()
 }
 
-pub fn set_load_root(root: PathBuf) {
-    *LOAD_ROOT.lock().unwrap() = Some(root);
+pub fn set_load_root<P: Into<PathBuf>>(root: P) {
+    *LOAD_ROOT.lock().unwrap() = Some(root.into());
 }
 
-pub fn prepend_load_root(path: &Path) -> PathBuf {
+pub fn prepend_load_root<P: AsRef<Path>>(path: P) -> PathBuf {
+    let path = path.as_ref();
     match path.is_relative() {
-        true => crate::context::get_load_root().join(path),
+        true => get_load_root().join(path),
         false => path.to_path_buf(),
     }
 }

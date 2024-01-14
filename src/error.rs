@@ -6,7 +6,7 @@ use thiserror::Error;
 #[derive(Error, Diagnostic, Debug)]
 pub enum XXError {
     #[error("{0}\nFile: {1}")]
-    #[diagnostic(code(xx::err::file), url(docsrs))]
+    #[diagnostic(code(xxerr::file), url(docsrs))]
     FileError(std::io::Error, PathBuf),
 }
 
