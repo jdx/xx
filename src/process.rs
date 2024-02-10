@@ -7,6 +7,8 @@ pub fn sh(script: &str) -> XXResult<String> {
     let output = Command::new("sh")
         .arg("-c")
         .arg(script)
+        .stdin(std::process::Stdio::inherit())
+        .stderr(std::process::Stdio::inherit())
         .output()
         .map_err(|err| XXError::ProcessError(err, format!("sh -c {script}")))?;
 
@@ -16,7 +18,7 @@ pub fn sh(script: &str) -> XXResult<String> {
     Ok(stdout)
 }
 
-fn check_status(status: ExitStatus) -> io::Result<()> {
+pub fn check_status(status: ExitStatus) -> io::Result<()> {
     if status.success() {
         return Ok(());
     }
