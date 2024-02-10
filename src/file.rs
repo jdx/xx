@@ -1,5 +1,7 @@
+use std::collections::BTreeSet;
 use std::fs;
 use std::path::Path;
+use std::path::PathBuf;
 
 use crate::{XXError, XXResult};
 
@@ -27,6 +29,17 @@ pub fn mkdirp<P: AsRef<Path>>(path: P) -> XXResult<()> {
     debug!("mkdirp: {:?}", path);
     fs::create_dir_all(path).map_err(|err| XXError::FileError(err, path.to_path_buf()))?;
     Ok(())
+}
+
+pub fn ls(path: &Path) -> XXResult<Vec<PathBuf>> {
+    debug!("ls: {:?}", path);
+    let entries = fs::read_dir(path).map_err(|err| XXError::FileError(err, path.to_path_buf()))?;
+    let mut files = BTreeSet::new();
+    for entry in entries {
+        let entry = entry.map_err(|err| XXError::FileError(err, path.to_path_buf()))?;
+        files.insert(entry.path());
+    }
+    Ok(files.into_iter().collect())
 }
 
 #[cfg(test)]

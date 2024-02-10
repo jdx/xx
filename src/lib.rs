@@ -6,6 +6,7 @@ pub use error::{XXError, XXResult};
 pub mod context;
 pub mod error;
 pub mod file;
+pub mod process;
 mod regex;
 
 #[cfg(test)]
