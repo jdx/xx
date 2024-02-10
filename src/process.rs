@@ -25,5 +25,5 @@ fn check_status(status: ExitStatus) -> io::Result<()> {
     } else {
         "terminated by signal".to_string()
     };
-    return Err(io::Error::new(io::ErrorKind::Other, msg));
+    Err(io::Error::new(io::ErrorKind::Other, msg))
 }
