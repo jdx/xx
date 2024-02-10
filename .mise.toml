@@ -1,8 +1,10 @@
 tasks.build = "cargo build --all"
 tasks.build-release = "cargo build --all --release"
 tasks.format = "cargo fmt -- --all"
-tasks.format-check = "cargo fmt --all --check"
-tasks.lint = "cargo clippy --all -- -D warnings"
+tasks.lint = [
+  "cargo clippy --all -- -D warnings",
+  "cargo fmt --all -- --check",
+]
 tasks.release = "cargo release"
 
 [tasks.test]
@@ -10,4 +12,4 @@ run = "cargo test --all"
 depends = ['build']
 
 [tasks.ci]
-depends = ["build", "lint", "format-check", "test"]
+depends = ["build", "lint", "test"]
