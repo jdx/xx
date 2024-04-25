@@ -9,6 +9,10 @@ pub enum XXError {
     #[diagnostic(code(xx::file), url(docsrs))]
     FileError(std::io::Error, PathBuf),
 
+    #[error("{0}\nGit: {1}")]
+    #[diagnostic(code(xx::git), url(docsrs))]
+    GitError(std::io::Error, PathBuf),
+
     #[error("{0}\n{1}")]
     #[diagnostic(code(xx::process), url(docsrs))]
     ProcessError(std::io::Error, String),

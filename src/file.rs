@@ -31,6 +31,14 @@ pub fn mkdirp<P: AsRef<Path>>(path: P) -> XXResult<()> {
     Ok(())
 }
 
+pub fn touch_dir(dir: &Path) -> XXResult<()> {
+    trace!("touch {}", dir.display());
+    let now = filetime::FileTime::now();
+    filetime::set_file_times(dir, now, now)
+        .map_err(|err| XXError::FileError(err, dir.to_path_buf()))?;
+    Ok(())
+}
+
 pub fn ls(path: &Path) -> XXResult<Vec<PathBuf>> {
     debug!("ls: {:?}", path);
     let entries = fs::read_dir(path).map_err(|err| XXError::FileError(err, path.to_path_buf()))?;
