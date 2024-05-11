@@ -16,6 +16,21 @@ pub enum XXError {
     #[error("{0}\n{1}")]
     #[diagnostic(code(xx::process), url(docsrs))]
     ProcessError(std::io::Error, String),
+
+    #[cfg(any(
+        feature = "archive_untar_gzip",
+        feature = "archive_untar_bzip2",
+        feature = "archive_untar_xz",
+        feature = "archive_unzip",
+    ))]
+    #[error("{0}\n{1}")]
+    #[diagnostic(code(xx::archive), url(docsrs))]
+    ArchiveIOError(std::io::Error, PathBuf),
+
+    #[cfg(feature = "archive_unzip")]
+    #[error("{0}\n{1}")]
+    #[diagnostic(code(xx::archive), url(docsrs))]
+    ArchiveZipError(zip::result::ZipError, PathBuf),
 }
 
 pub type XXResult<T> = Result<T, XXError>;

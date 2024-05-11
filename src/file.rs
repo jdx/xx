@@ -5,6 +5,16 @@ use std::path::PathBuf;
 
 use crate::{XXError, XXResult};
 
+pub fn open(path: &Path) -> XXResult<fs::File> {
+    debug!("open: {:?}", path);
+    fs::File::open(path).map_err(|err| XXError::FileError(err, path.to_path_buf()))
+}
+
+pub fn create(path: &Path) -> XXResult<fs::File> {
+    debug!("create: {:?}", path);
+    fs::File::create(path).map_err(|err| XXError::FileError(err, path.to_path_buf()))
+}
+
 pub fn read_to_string<P: AsRef<Path>>(path: P) -> XXResult<String> {
     debug!("read_to_string: {:?}", path.as_ref());
     let path = path.as_ref();
