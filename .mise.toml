@@ -9,7 +9,12 @@ tasks.release = "cargo release"
 
 [tasks.test]
 run = "cargo test --all --all-features"
-depends = ['build']
+
+[tasks.coverage]
+run = "cargo llvm-cov --all --all-features --lcov --output-path coverage.lcov"
 
 [tasks.ci]
-depends = ["build", "lint", "test"]
+depends = ["build", "lint", "coverage"]
+
+[tools]
+"cargo:cargo-llvm-cov" = "latest"

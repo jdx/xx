@@ -9,7 +9,6 @@ concurrency:
 
 env:
   MISE_EXPERIMENTAL: 1
-  MISE_LOG_LEVEL: trace
 
 jobs:
   test:
@@ -19,7 +18,10 @@ jobs:
       - uses: Swatinem/rust-cache@v2
         with:
           save-if: "{{ github.ref_name == 'main' }}"
+      - uses: cargo-bins/cargo-binstall@main
       - uses: jdx/mise-action@v2
-      - run: mise r build
-      - run: mise r test
-      - run: mise r lint
+      - run: mise r ci
+      - uses: codacy/codacy-coverage-reporter-action@v1
+        with:
+          project-token: ${{ secrets.CODACY_PROJECT_TOKEN }}
+          coverage-reports: coverage.lcov
