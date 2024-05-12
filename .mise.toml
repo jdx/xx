@@ -13,7 +13,11 @@ env = { RUST_LOG = "xx=trace" }
 
 [tasks.coverage]
 alias = "cov"
-run = "cargo llvm-cov --all --all-features --lcov --output-path coverage.lcov -- --nocapture"
+run = [
+  "cargo llvm-cov --no-report --all --all-features -- --nocapture",
+  "cargo llvm-cov report --lcov --output-path coverage.lcov",
+  "cargo llvm-cov report",
+]
 env = { RUST_LOG = "xx=trace" }
 
 [tasks.ci]
