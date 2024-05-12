@@ -33,7 +33,8 @@ pub fn open<P: AsRef<Path>>(path: P) -> XXResult<fs::File> {
 /// # Example
 /// ```
 /// use xx::file::create;
-/// let file = create("src/lib.rs").unwrap();
+/// let tmp = tempfile::tempdir().unwrap();
+/// let file = create(tmp.path().join("test.txt")).unwrap();
 /// ```
 pub fn create<P: AsRef<Path>>(path: P) -> XXResult<fs::File> {
     let path = path.as_ref();
@@ -123,8 +124,7 @@ pub fn touch_dir<P: AsRef<Path>>(dir: P) -> XXResult<()> {
     trace!("touch {}", dir.display());
     mkdirp(&dir)?;
     let now = filetime::FileTime::now();
-    filetime::set_file_times(&dir, now, now)
-        .map_err(|err| XXError::FileError(err, dir.clone()))?;
+    filetime::set_file_times(&dir, now, now).map_err(|err| XXError::FileError(err, dir.clone()))?;
     Ok(())
 }
 
@@ -153,7 +153,7 @@ pub fn ls<P: AsRef<Path>>(path: P) -> XXResult<Vec<PathBuf>> {
 }
 
 #[cfg(feature = "glob")]
-use globwalk::{GlobWalkerBuilder};
+use globwalk::GlobWalkerBuilder;
 
 #[cfg(feature = "glob")]
 /// Glob for files matching the given pattern
@@ -185,7 +185,8 @@ pub fn glob<P: Into<PathBuf>>(input: P) -> XXResult<Vec<PathBuf>> {
     let files = if pattern.to_string_lossy().contains('*') {
         GlobWalkerBuilder::new(root, pattern.to_string_lossy())
             .follow_links(true)
-            .build().map_err(|err| XXError::GlobwalkError(err, input))?
+            .build()
+            .map_err(|err| XXError::GlobwalkError(err, input))?
             .filter_map(|e| e.ok())
             .filter(|e| e.file_type().is_file())
             .map(|e| e.into_path())
