@@ -9,6 +9,7 @@ concurrency:
 
 env:
   MISE_EXPERIMENTAL: 1
+  MISE_LOG_LEVEL: trace
 
 jobs:
   test:
