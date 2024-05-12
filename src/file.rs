@@ -107,6 +107,23 @@ pub fn mkdirp<P: AsRef<Path>>(path: P) -> XXResult<()> {
     Ok(())
 }
 
+/// Remove a directory and all its contents
+/// # Arguments
+/// * `path` - A path to a directory
+/// # Example
+/// ```
+/// use xx::file::remove_dir_all;
+/// remove_dir_all("/tmp/foo").unwrap();
+/// ```
+pub fn remove_dir_all<P: AsRef<Path>>(path: P) -> XXResult<()> {
+    let path = path.as_ref();
+    if path.exists() {
+        debug!("remove_dir_all: {:?}", path);
+        fs::remove_dir_all(path).map_err(|err| XXError::FileError(err, path.to_path_buf()))?;
+    }
+    Ok(())
+}
+
 /// Update a directory's last modified time
 /// # Arguments
 /// * `dir` - A path to a directory

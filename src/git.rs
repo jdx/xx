@@ -153,3 +153,29 @@ fn get_git_version() -> Result<String> {
         .map_err(|err| XXError::GitError(err, PathBuf::new()))?;
     Ok(version.trim().into())
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_git() {
+        file::remove_dir_all("/tmp/xx").unwrap_or(());
+        let git = Git::new(PathBuf::from("/tmp/xx"));
+        assert_eq!(git.is_repo(), false);
+        assert_eq!(git.get_remote_url(), None);
+        assert_eq!(git.current_branch().is_err(), true);
+        assert_eq!(git.current_sha().is_err(), true);
+        assert_eq!(git.current_sha_short().is_err(), true);
+        assert_eq!(git.current_abbrev_ref().is_err(), true);
+
+        git.clone("https://github.com/jdx/xx").unwrap();
+        assert_eq!(git.is_repo(), true);
+        assert_eq!(
+            git.get_remote_url(),
+            Some("https://github.com/jdx/xx".to_string())
+        );
+
+        file::remove_dir_all("/tmp/xx").unwrap();
+    }
+}
