@@ -33,7 +33,8 @@ archive_unzip = ["zip"]
 glob = ["globwalk"]
 
 [dev-dependencies]
+env_logger = "0.11"
 once_cell = "1"
 pretty_assertions = "1"
 tempfile = "3"
-test-log = "0.2.16"
+test-log = "0.2"

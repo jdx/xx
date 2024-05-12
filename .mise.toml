@@ -8,10 +8,13 @@ tasks.lint = [
 tasks.release = "cargo release"
 
 [tasks.test]
-run = "cargo test --all --all-features"
+run = "cargo test --all --all-features -- --nocapture"
+env = { RUST_LOG = "xx=trace" }
 
 [tasks.coverage]
-run = "cargo llvm-cov --all --all-features --lcov --output-path coverage.lcov"
+alias = "cov"
+run = "cargo llvm-cov --all --all-features --lcov --output-path coverage.lcov -- --nocapture"
+env = { RUST_LOG = "xx=trace" }
 
 [tasks.ci]
 depends = ["build", "lint", "coverage"]
