@@ -157,6 +157,7 @@ fn get_git_version() -> Result<String> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use test_log::test;
 
     #[test]
     fn test_git() {

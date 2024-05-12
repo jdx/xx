@@ -16,5 +16,8 @@ run = "cargo llvm-cov --all --all-features --lcov --output-path coverage.lcov"
 [tasks.ci]
 depends = ["build", "lint", "coverage"]
 
+[env]
+RUST_TEST_THREADS = '1'
+
 [tools]
 "cargo:cargo-llvm-cov" = "latest"

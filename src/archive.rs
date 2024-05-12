@@ -61,6 +61,7 @@ pub fn unzip(archive: &Path, destination: &Path) -> XXResult<()> {
 #[cfg(test)]
 mod tests {
     use std::fs;
+    use test_log::test;
 
     use super::*;
 

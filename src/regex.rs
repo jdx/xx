@@ -8,6 +8,8 @@ macro_rules! regex {
 
 #[cfg(test)]
 mod tests {
+    use test_log::test;
+
     #[test]
     fn test_regex() {
         let re = regex!("^\\d{4}-\\d{2}-\\d{2}$");

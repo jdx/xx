@@ -22,6 +22,7 @@ pub fn prepend_load_root<P: AsRef<Path>>(path: P) -> PathBuf {
 #[cfg(test)]
 mod tests {
     use pretty_assertions::assert_eq;
+    use test_log::test;
 
     use super::*;
 

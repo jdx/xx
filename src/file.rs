@@ -217,6 +217,7 @@ pub fn glob<P: Into<PathBuf>>(input: P) -> XXResult<Vec<PathBuf>> {
 #[cfg(test)]
 mod tests {
     use pretty_assertions::assert_str_eq;
+    use test_log::test;
 
     use crate::test;
 
