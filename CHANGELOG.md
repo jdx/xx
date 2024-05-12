@@ -2,6 +2,16 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.5.1] - 2024-05-12
+
+### 🐛 Bug Fixes
+
+- Lib.rs
+
+### 📚 Documentation
+
+- Added CHANGELOG
+
 ## [0.5.0] - 2024-05-12
 
 ### 🚀 Features
