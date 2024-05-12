@@ -31,6 +31,11 @@ pub enum XXError {
     #[error("{0}\n{1}")]
     #[diagnostic(code(xx::archive), url(docsrs))]
     ArchiveZipError(zip::result::ZipError, PathBuf),
+
+    #[cfg(feature = "glob")]
+    #[error("{0}\n{1}")]
+    #[diagnostic(code(xx::glob), url(docsrs))]
+    GlobwalkError(globwalk::GlobError, PathBuf),
 }
 
 pub type XXResult<T> = Result<T, XXError>;
