@@ -33,6 +33,9 @@ archive_untar_xz = ["tar", "xz"]
 archive_unzip = ["zip"]
 glob = ["globwalk"]
 http = ["reqwest"]
+native-tls = ["reqwest/native-tls"]
+rustls = ["reqwest/rustls-tls"]
+rustls-native-roots = ["reqwest/rustls-tls-native-roots"]
 
 [dev-dependencies]
 env_logger = "0.11"
