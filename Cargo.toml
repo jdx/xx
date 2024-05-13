@@ -19,6 +19,7 @@ globwalk = { version = "0.9", optional = true }
 log = "0.4"
 miette = "5"
 regex = "1"
+reqwest = { version = "0.12", features = ["blocking"], optional = true }
 tar = { version = "0.4", optional = true }
 thiserror = "1"
 xz = { version = "0.1", optional = true }
@@ -31,6 +32,7 @@ archive_untar_gzip = ["tar", "flate2"]
 archive_untar_xz = ["tar", "xz"]
 archive_unzip = ["zip"]
 glob = ["globwalk"]
+http = ["reqwest"]
 
 [dev-dependencies]
 env_logger = "0.11"

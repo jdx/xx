@@ -5,6 +5,9 @@ use thiserror::Error;
 
 #[derive(Error, Diagnostic, Debug)]
 pub enum XXError {
+    #[error("{0}")]
+    Error(String),
+
     #[error("{0}\nFile: {1}")]
     #[diagnostic(code(xx::file), url(docsrs))]
     FileError(std::io::Error, PathBuf),
@@ -36,6 +39,18 @@ pub enum XXError {
     #[error("{0}\n{1}")]
     #[diagnostic(code(xx::glob), url(docsrs))]
     GlobwalkError(globwalk::GlobError, PathBuf),
+
+    #[cfg(feature = "http")]
+    #[error("{0}\n{1}")]
+    #[diagnostic(code(xx::http), url(docsrs))]
+    HTTPError(reqwest::Error, String),
 }
 
 pub type XXResult<T> = Result<T, XXError>;
+
+#[macro_export]
+macro_rules! error {
+    ($($arg:tt)*) => {
+        $crate::error::XXError::Error(format!($($arg)*))
+    };
+}

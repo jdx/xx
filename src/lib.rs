@@ -18,5 +18,8 @@ mod regex;
 ))]
 pub mod archive;
 
+#[cfg(feature = "http")]
+pub mod http;
+
 #[cfg(test)]
 pub mod test;
