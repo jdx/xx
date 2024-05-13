@@ -1,6 +1,9 @@
-use crate::{error, XXError, XXResult};
-use reqwest::IntoUrl;
+use std::io::Cursor;
 use std::path::Path;
+
+use reqwest::IntoUrl;
+
+use crate::{error, XXError, XXResult};
 
 pub struct XXHTTPResponse {
     pub status: reqwest::StatusCode,
@@ -17,12 +20,17 @@ pub struct XXHTTPResponse {
 /// Returns an error if the URL cannot be fetched
 /// # Example
 /// ```
-/// use xx::http::get;
-/// let body = get("https://httpbin.org/get").unwrap().body;
+/// #[tokio::main]
+/// async fn main() {
+///     use xx::http::get;
+///     let body = get("https://httpbin.org/get").await.unwrap().body;
+///     assert!(body.contains("httpbin"));
+/// }
 /// ```
-pub fn get(url: impl IntoUrl) -> XXResult<XXHTTPResponse> {
+pub async fn get(url: impl IntoUrl) -> XXResult<XXHTTPResponse> {
     let url = url.into_url().map_err(|err| error!("url error: {}", err))?;
-    let resp = reqwest::blocking::get(url.clone())
+    let resp = reqwest::get(url.clone())
+        .await
         .map_err(|err| XXError::HTTPError(err, url.to_string()))?;
     resp.error_for_status_ref()
         .map_err(|err| XXError::HTTPError(err, url.to_string()))?;
@@ -31,6 +39,7 @@ pub fn get(url: impl IntoUrl) -> XXResult<XXHTTPResponse> {
         headers: resp.headers().clone(),
         body: resp
             .text()
+            .await
             .map_err(|err| XXError::HTTPError(err, url.to_string()))?,
     })
 }
@@ -43,13 +52,17 @@ pub fn get(url: impl IntoUrl) -> XXResult<XXHTTPResponse> {
 /// Returns an error if the file cannot be downloaded or saved
 /// # Example
 /// ```
-/// use xx::http::download;
-/// download("https://httpbin.org/get", "/tmp/test.txt").unwrap();
+/// #[tokio::main]
+/// async fn main() {
+///     use xx::http::download;
+///     download("https://httpbin.org/get", "/tmp/test.txt").await.unwrap();
+/// }
 /// ```
-pub fn download(url: impl IntoUrl, to: impl AsRef<Path>) -> XXResult<XXHTTPResponse> {
+pub async fn download(url: impl IntoUrl, to: impl AsRef<Path>) -> XXResult<XXHTTPResponse> {
     let url = url.into_url().map_err(|err| error!("url error: {}", err))?;
     let to = to.as_ref();
-    let mut resp = reqwest::blocking::get(url.clone())
+    let resp = reqwest::get(url.clone())
+        .await
         .map_err(|err| XXError::HTTPError(err, url.to_string()))?;
     resp.error_for_status_ref()
         .map_err(|err| XXError::HTTPError(err, url.to_string()))?;
@@ -60,7 +73,13 @@ pub fn download(url: impl IntoUrl, to: impl AsRef<Path>) -> XXResult<XXHTTPRespo
         headers: resp.headers().clone(),
         body: "".to_string(),
     };
-    std::io::copy(&mut resp, &mut file).map_err(|err| XXError::FileError(err, to.to_path_buf()))?;
+    let mut content = Cursor::new(
+        resp.bytes()
+            .await
+            .map_err(|err| XXError::HTTPError(err, url.to_string()))?,
+    );
+    std::io::copy(&mut content, &mut file)
+        .map_err(|err| XXError::FileError(err, to.to_path_buf()))?;
     Ok(out)
 }
 
@@ -71,23 +90,19 @@ mod tests {
 
     use super::*;
 
-    static TEST_MUTEX: std::sync::Mutex<()> = std::sync::Mutex::new(());
-
-    #[test]
-    fn test_get() {
-        let _t = TEST_MUTEX.lock().unwrap();
-        let resp = get("https://httpbin.org/get").unwrap();
+    #[test(tokio::test)]
+    async fn test_get() {
+        let resp = get("https://httpbin.org/get").await.unwrap();
         assert_eq!(resp.status, reqwest::StatusCode::OK);
         assert!(resp.body.contains("httpbin"));
         assert!(resp.headers.contains_key("Date"));
     }
 
-    #[test]
-    fn test_download() {
-        let _t = TEST_MUTEX.lock().unwrap();
+    #[test(tokio::test)]
+    async fn test_download() {
         let tmp = tempfile::tempdir().unwrap();
         let file = tmp.path().join("test.txt");
-        let resp = download("https://httpbin.org/get", &file).unwrap();
+        let resp = download("https://httpbin.org/get", &file).await.unwrap();
         assert_eq!(resp.status, reqwest::StatusCode::OK);
         assert_eq!(resp.body, "");
         assert!(resp.headers.contains_key("Date"));

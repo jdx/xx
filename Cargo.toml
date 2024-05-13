@@ -19,8 +19,9 @@ globwalk = { version = "0.9", optional = true }
 log = "0.4"
 miette = "5"
 regex = "1"
-reqwest = { version = "0.12", features = ["blocking"], optional = true }
+reqwest = { version = "0.12", optional = true }
 tar = { version = "0.4", optional = true }
+tokio = { version = "1", optional = true, features = ["full"] }
 thiserror = "1"
 xz = { version = "0.1", optional = true }
 zip = { version = "1", optional = true }
@@ -32,7 +33,7 @@ archive_untar_gzip = ["tar", "flate2"]
 archive_untar_xz = ["tar", "xz"]
 archive_unzip = ["zip"]
 glob = ["globwalk"]
-http = ["reqwest"]
+http = ["reqwest", "tokio"]
 native-tls = ["reqwest/native-tls"]
 rustls = ["reqwest/rustls-tls"]
 rustls-native-roots = ["reqwest/rustls-tls-native-roots"]
