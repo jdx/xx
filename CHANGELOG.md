@@ -2,6 +2,23 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.0.0] - 2024-05-13
+
+### 🚀 Features
+
+- Added file::remove_dir_all
+- Http
+
+### 🧪 Testing
+
+- Enable logging in unit tests
+- Enable trace logging
+- Show coverage results in action output
+
+### ⚙️ Miscellaneous Tasks
+
+- Added coverage (#12)
+
 ## [0.5.1] - 2024-05-12
 
 ### 🐛 Bug Fixes
@@ -11,6 +28,10 @@ All notable changes to this project will be documented in this file.
 ### 📚 Documentation
 
 - Added CHANGELOG
+
+### ⚙️ Miscellaneous Tasks
+
+- Release xx version 0.5.1
 
 ## [0.5.0] - 2024-05-12
 
