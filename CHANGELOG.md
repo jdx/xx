@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.0.1] - 2024-05-13
+
+### 🚀 Features
+
+- Added rustls feature
+
 ## [1.0.0] - 2024-05-13
 
 ### 🚀 Features
@@ -18,6 +24,7 @@ All notable changes to this project will be documented in this file.
 ### ⚙️ Miscellaneous Tasks
 
 - Added coverage (#12)
+- Release xx version 1.0.0
 
 ## [0.5.1] - 2024-05-12
 
