@@ -2,6 +2,20 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.1.1] - 2024-05-14
+
+### 🚀 Features
+
+- *(hash)* Added ensure_checksum_sha512
+
+### 🐛 Bug Fixes
+
+- Hash generics
+
+### ⚙️ Miscellaneous Tasks
+
+- *(hash)* Debug logging
+
 ## [1.1.0] - 2024-05-14
 
 ### 🚀 Features
@@ -11,6 +25,10 @@ All notable changes to this project will be documented in this file.
 ### 🐛 Bug Fixes
 
 - *(deps)* Update rust crate thiserror to v1.0.60 (#13)
+
+### ⚙️ Miscellaneous Tasks
+
+- Release xx version 1.1.0
 
 ## [1.0.2] - 2024-05-13
 
