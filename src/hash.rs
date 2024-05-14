@@ -119,6 +119,29 @@ pub fn ensure_checksum_sha256(path: &Path, checksum: &str) -> XXResult<()> {
     Ok(())
 }
 
+/// Ensure that a file has a specific SHA512 checksum
+/// # Arguments
+/// * `path` - A path to a file
+/// * `checksum` - A SHA512 checksum
+/// # Errors
+/// Returns an error if the checksum does not match
+/// # Example
+/// ```
+/// use std::path::Path;
+/// use xx::hash::ensure_checksum_sha512;
+/// ensure_checksum_sha512(Path::new("test/data/foo.txt"), "e79b8ad22b34a54be999f4eadde2ee895c208d4b3d83f1954b61255d2556a8b73773c0dc0210aa044ffcca6834839460959cbc9f73d3079262fc8bc935d46262").unwrap();
+/// ```
+pub fn ensure_checksum_sha512(path: &Path, checksum: &str) -> XXResult<()> {
+    let actual = file_hash_sha512(path)?;
+    if actual != checksum {
+        bail!(
+            "Checksum mismatch for file {}:\nExpected: {checksum}\nActual:   {actual}",
+            display_path(path),
+        );
+    }
+    Ok(())
+}
+
 pub fn parse_shasums(text: &str) -> HashMap<String, String> {
     text.lines()
         .map(|l| {
