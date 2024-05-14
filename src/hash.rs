@@ -41,7 +41,9 @@ pub fn hash_to_str<T: Hash>(t: &T) -> String {
 /// let hash = file_hash_sha256(Path::new("test/data/foo.txt")).unwrap();
 /// ```
 pub fn file_hash_sha256(path: impl AsRef<Path>) -> XXResult<String> {
-    let h = file_hash::<sha2::Sha256>(path.as_ref())?;
+    let path = path.as_ref();
+    debug!("Calculating SHA256 checksum for {}", display_path(path));
+    let h = file_hash::<sha2::Sha256>(path)?;
     Ok(format!("{h:x}"))
 }
 
@@ -59,7 +61,9 @@ pub fn file_hash_sha256(path: impl AsRef<Path>) -> XXResult<String> {
 /// let hash = file_hash_sha512(Path::new("test/data/foo.txt")).unwrap();
 /// ```
 pub fn file_hash_sha512(path: impl AsRef<Path>) -> XXResult<String> {
-    let h = file_hash::<sha2::Sha512>(path.as_ref())?;
+    let path = path.as_ref();
+    debug!("Calculating SHA512 checksum for {}", display_path(path));
+    let h = file_hash::<sha2::Sha512>(path)?;
     Ok(format!("{h:x}"))
 }
 
