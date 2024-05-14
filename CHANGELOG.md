@@ -2,11 +2,25 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.1.0] - 2024-05-14
+
+### 🚀 Features
+
+- Added hash functions
+
+### 🐛 Bug Fixes
+
+- *(deps)* Update rust crate thiserror to v1.0.60 (#13)
+
 ## [1.0.2] - 2024-05-13
 
 ### 🐛 Bug Fixes
 
 - Use async reqwest
+
+### ⚙️ Miscellaneous Tasks
+
+- Release xx version 1.0.2
 
 ## [1.0.1] - 2024-05-13
 
