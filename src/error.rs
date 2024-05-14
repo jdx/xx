@@ -54,3 +54,10 @@ macro_rules! error {
         $crate::error::XXError::Error(format!($($arg)*))
     };
 }
+
+#[macro_export]
+macro_rules! bail {
+    ($($arg:tt)*) => {
+        return Err($crate::error!($($arg)*));
+    };
+}

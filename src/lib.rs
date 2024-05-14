@@ -1,6 +1,9 @@
+#![allow(unused_attributes)]
+
 #[macro_use]
 extern crate log;
 
+#[macro_use]
 pub use error::{XXError, XXResult};
 
 pub mod context;
@@ -18,6 +21,8 @@ mod regex;
 ))]
 pub mod archive;
 
+#[cfg(feature = "hash")]
+pub mod hash;
 #[cfg(feature = "http")]
 pub mod http;
 

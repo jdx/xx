@@ -214,6 +214,27 @@ pub fn glob<P: Into<PathBuf>>(input: P) -> XXResult<Vec<PathBuf>> {
     Ok(files)
 }
 
+/// replaces $HOME with "~"
+/// # Arguments
+/// * `path` - A path
+/// # Returns
+/// A string with the path
+/// # Example
+/// ```
+/// use xx::file::display_path;
+/// display_path("/home/user/foo"); // "~/foo"
+/// display_path("/tmp/foo"); // "/tmp/foo"
+/// ```
+pub fn display_path<P: AsRef<Path>>(path: P) -> String {
+    let home = homedir::get_my_home().unwrap_or_default();
+    let home = home.unwrap_or("/".into()).to_string_lossy().to_string();
+    let path = path.as_ref();
+    match path.starts_with(&home) && home != "/" {
+        true => path.to_string_lossy().replacen(&home, "~", 1),
+        false => path.display().to_string(),
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use pretty_assertions::assert_str_eq;

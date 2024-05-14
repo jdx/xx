@@ -16,13 +16,15 @@ duct = "0.13"
 filetime = "0.2"
 flate2 = { version = "1", optional = true }
 globwalk = { version = "0.9", optional = true }
+homedir = "0.2.1"
 log = "0.4"
 miette = "5"
 regex = "1"
 reqwest = { version = "0.12", optional = true }
+sha2 = { version = "0.10", optional = true }
 tar = { version = "0.4", optional = true }
-tokio = { version = "1", optional = true, features = ["full"] }
 thiserror = "1"
+tokio = { version = "1", optional = true, features = ["full"] }
 xz = { version = "0.1", optional = true }
 zip = { version = "1", optional = true }
 
@@ -33,6 +35,7 @@ archive_untar_gzip = ["tar", "flate2"]
 archive_untar_xz = ["tar", "xz"]
 archive_unzip = ["zip"]
 glob = ["globwalk"]
+hash = ["sha2"]
 http = ["reqwest", "tokio"]
 native-tls = ["reqwest/native-tls"]
 rustls = ["reqwest/rustls-tls"]
@@ -40,6 +43,7 @@ rustls-native-roots = ["reqwest/rustls-tls-native-roots"]
 
 [dev-dependencies]
 env_logger = "0.11"
+insta = "1.38.0"
 once_cell = "1"
 pretty_assertions = "1"
 tempfile = "3"
