@@ -3,6 +3,9 @@ use std::fs;
 use std::path::Path;
 use std::path::PathBuf;
 
+#[cfg(feature = "glob")]
+use globwalk::GlobWalkerBuilder;
+
 use crate::{XXError, XXResult};
 
 /// Open a file for reading
@@ -77,7 +80,8 @@ pub fn read_to_string<P: AsRef<Path>>(path: P) -> XXResult<String> {
 /// let path = tmpdir.path().join("test.txt");
 /// write(&path, "Hello, world!").unwrap();
 /// ```
-pub fn write<P: AsRef<Path>>(path: P, contents: &str) -> XXResult<()> {
+///
+pub fn write<P: AsRef<Path>, C: AsRef<[u8]>>(path: P, contents: C) -> XXResult<()> {
     debug!("write: {:?}", path.as_ref());
     let path = path.as_ref();
     mkdirp(path.parent().unwrap())?;
@@ -168,9 +172,6 @@ pub fn ls<P: AsRef<Path>>(path: P) -> XXResult<Vec<PathBuf>> {
     }
     Ok(files.into_iter().collect())
 }
-
-#[cfg(feature = "glob")]
-use globwalk::GlobWalkerBuilder;
 
 #[cfg(feature = "glob")]
 /// Glob for files matching the given pattern

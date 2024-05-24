@@ -1,18 +1,25 @@
 tasks.build = "cargo build --all --all-features"
 tasks.build-release = "cargo build --all --all-features --release"
 tasks.format = "cargo fmt -- --all"
-tasks.lint = [
+tasks.release = "cargo release"
+tasks.clean = "cargo clean"
+
+[tasks.lint]
+alias = "l"
+depends = ["build"]
+run = [
   "cargo clippy --all --all-features -- -D warnings",
   "cargo fmt --all -- --check",
 ]
-tasks.release = "cargo release"
 
 [tasks.test]
+alias = "t"
 run = "cargo test --all --all-features -- --nocapture"
 env = { RUST_LOG = "xx=trace" }
 
 [tasks.coverage]
 alias = "cov"
+depends = ["build"]
 run = [
   "cargo llvm-cov --no-report --all --all-features -- --nocapture",
   "cargo llvm-cov report --lcov --output-path coverage.lcov",
