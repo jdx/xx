@@ -69,25 +69,6 @@ impl Git {
         Ok((prev_rev, post_rev))
     }
 
-    pub fn clone<D: AsRef<Path>>(url: &str, dir: D) -> XXResult<Self> {
-        let dir = dir.as_ref().to_path_buf();
-        debug!("cloning {} to {}", url, dir.display());
-        if let Some(parent) = dir.parent() {
-            file::mkdirp(parent)?;
-        }
-        match get_git_version() {
-            Ok(version) => trace!("git version: {}", version),
-            Err(err) => warn!(
-                "failed to get git version: {:#}\n Git is required to use mise.",
-                err
-            ),
-        }
-        cmd!("git", "clone", "-q", "--depth", "1", url, &dir)
-            .run()
-            .map_err(|err| XXError::GitError(err, dir.clone()))?;
-        Ok(Self::new(dir))
-    }
-
     pub fn current_branch(&self) -> XXResult<String> {
         let branch = git_cmd!(&self.dir, "branch", "--show-current")
             .read()
@@ -148,6 +129,25 @@ impl Git {
     }
 }
 
+pub fn clone<D: AsRef<Path>>(url: &str, dir: D) -> XXResult<Git> {
+    let dir = dir.as_ref().to_path_buf();
+    debug!("cloning {} to {}", url, dir.display());
+    if let Some(parent) = dir.parent() {
+        file::mkdirp(parent)?;
+    }
+    match get_git_version() {
+        Ok(version) => trace!("git version: {}", version),
+        Err(err) => warn!(
+            "failed to get git version: {:#}\n Git is required to use mise.",
+            err
+        ),
+    }
+    cmd!("git", "clone", "-q", "--depth", "1", url, &dir)
+        .run()
+        .map_err(|err| XXError::GitError(err, dir.clone()))?;
+    Ok(Git::new(dir))
+}
+
 fn get_git_version() -> Result<String> {
     let version = cmd!("git", "--version")
         .read()
@@ -171,7 +171,7 @@ mod tests {
         assert!(git.current_sha_short().is_err());
         assert!(git.current_abbrev_ref().is_err());
 
-        let git = Git::clone("https://github.com/jdx/xx", &git.dir).unwrap();
+        let git = clone("https://github.com/jdx/xx", &git.dir).unwrap();
         assert!(git.is_repo());
         assert_eq!(
             git.get_remote_url(),
