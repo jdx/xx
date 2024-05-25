@@ -2,6 +2,19 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.1.2] - 2024-05-25
+
+### 🚀 Features
+
+- *(file)* Added mv
+
+### 🐛 Bug Fixes
+
+- *(deps)* Update rust crate thiserror to v1.0.61 (#15)
+- *(file)* Accept generic content for write()
+- *(http)* Create dir for download
+- *(file)* Create dir before moving
+
 ## [1.1.1] - 2024-05-14
 
 ### 🚀 Features
@@ -15,6 +28,7 @@ All notable changes to this project will be documented in this file.
 ### ⚙️ Miscellaneous Tasks
 
 - *(hash)* Debug logging
+- Release xx version 1.1.1
 
 ## [1.1.0] - 2024-05-14
 
