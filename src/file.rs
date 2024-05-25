@@ -124,6 +124,7 @@ pub fn mv<P: AsRef<Path>, Q: AsRef<Path>>(from: P, to: Q) -> XXResult<()> {
     let from = from.as_ref();
     let to = to.as_ref();
     debug!("mv: {:?} -> {:?}", from, to);
+    mkdirp(to.parent().unwrap())?;
     fs::rename(from, to).map_err(|err| XXError::FileError(err, from.to_path_buf()))?;
     Ok(())
 }
