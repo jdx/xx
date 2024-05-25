@@ -16,7 +16,7 @@ duct = "0.13"
 filetime = "0.2"
 flate2 = { version = "1", optional = true }
 globwalk = { version = "0.9", optional = true }
-homedir = "0.2.1"
+homedir = "0.2"
 log = "0.4"
 miette = "5"
 regex = "1"
@@ -26,7 +26,7 @@ tar = { version = "0.4", optional = true }
 thiserror = "1"
 tokio = { version = "1", optional = true, features = ["full"] }
 xz = { version = "0.1", optional = true }
-zip = { version = "1", optional = true }
+zip = { version = "2", optional = true }
 
 [features]
 archive = ["archive_untar_bzip2", "archive_untar_gzip", "archive_untar_xz", "archive_unzip"]
