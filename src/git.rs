@@ -1,4 +1,4 @@
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 use duct::{cmd, Expression};
 use miette::{miette, Result};
@@ -69,9 +69,10 @@ impl Git {
         Ok((prev_rev, post_rev))
     }
 
-    pub fn clone(&self, url: &str) -> XXResult<()> {
-        debug!("cloning {} to {}", url, self.dir.display());
-        if let Some(parent) = self.dir.parent() {
+    pub fn clone<D: AsRef<Path>>(url: &str, dir: D) -> XXResult<Self> {
+        let dir = dir.as_ref().to_path_buf();
+        debug!("cloning {} to {}", url, dir.display());
+        if let Some(parent) = dir.parent() {
             file::mkdirp(parent)?;
         }
         match get_git_version() {
@@ -81,10 +82,10 @@ impl Git {
                 err
             ),
         }
-        cmd!("git", "clone", "-q", "--depth", "1", url, &self.dir)
+        cmd!("git", "clone", "-q", "--depth", "1", url, &dir)
             .run()
-            .map_err(|err| XXError::GitError(err, self.dir.clone()))?;
-        Ok(())
+            .map_err(|err| XXError::GitError(err, dir.clone()))?;
+        Ok(Self::new(dir))
     }
 
     pub fn current_branch(&self) -> XXResult<String> {
@@ -163,15 +164,15 @@ mod tests {
     fn test_git() {
         file::remove_dir_all("/tmp/xx").unwrap_or(());
         let git = Git::new(PathBuf::from("/tmp/xx"));
-        assert_eq!(git.is_repo(), false);
+        assert!(!git.is_repo());
         assert_eq!(git.get_remote_url(), None);
-        assert_eq!(git.current_branch().is_err(), true);
-        assert_eq!(git.current_sha().is_err(), true);
-        assert_eq!(git.current_sha_short().is_err(), true);
-        assert_eq!(git.current_abbrev_ref().is_err(), true);
+        assert!(git.current_branch().is_err());
+        assert!(git.current_sha().is_err());
+        assert!(git.current_sha_short().is_err());
+        assert!(git.current_abbrev_ref().is_err());
 
-        git.clone("https://github.com/jdx/xx").unwrap();
-        assert_eq!(git.is_repo(), true);
+        let git = Git::clone("https://github.com/jdx/xx", &git.dir).unwrap();
+        assert!(git.is_repo());
         assert_eq!(
             git.get_remote_url(),
             Some("https://github.com/jdx/xx".to_string())
