@@ -111,6 +111,23 @@ pub fn mkdirp<P: AsRef<Path>>(path: P) -> XXResult<()> {
     Ok(())
 }
 
+/// Move a file or directory
+/// # Arguments
+/// * `from` - A path to a file or directory
+/// * `to` - A path to move the file or directory to
+/// # Example
+/// ```
+/// xx::file::create("/tmp/foo").unwrap();
+/// xx::file::mv("/tmp/foo", "/tmp/bar").unwrap();
+/// ```
+pub fn mv<P: AsRef<Path>, Q: AsRef<Path>>(from: P, to: Q) -> XXResult<()> {
+    let from = from.as_ref();
+    let to = to.as_ref();
+    debug!("mv: {:?} -> {:?}", from, to);
+    fs::rename(from, to).map_err(|err| XXError::FileError(err, from.to_path_buf()))?;
+    Ok(())
+}
+
 /// Remove a directory and all its contents
 /// # Arguments
 /// * `path` - A path to a directory
