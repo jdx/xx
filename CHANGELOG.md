@@ -2,11 +2,21 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.1.4] - 2024-05-25
+
+### 🐛 Bug Fixes
+
+- *(git)* Make clone static
+
 ## [1.1.3] - 2024-05-25
 
 ### 🐛 Bug Fixes
 
 - *(git)* Make clone static
+
+### ⚙️ Miscellaneous Tasks
+
+- Release xx version 1.1.3
 
 ## [1.1.2] - 2024-05-25
 
