@@ -3,7 +3,7 @@ use std::path::Path;
 
 use reqwest::IntoUrl;
 
-use crate::{error, XXError, XXResult};
+use crate::{error, file, XXError, XXResult};
 
 pub struct XXHTTPResponse {
     pub status: reqwest::StatusCode,
@@ -66,6 +66,7 @@ pub async fn download(url: impl IntoUrl, to: impl AsRef<Path>) -> XXResult<XXHTT
         .map_err(|err| XXError::HTTPError(err, url.to_string()))?;
     resp.error_for_status_ref()
         .map_err(|err| XXError::HTTPError(err, url.to_string()))?;
+    file::mkdirp(to.parent().unwrap())?;
     let mut file =
         std::fs::File::create(to).map_err(|err| XXError::FileError(err, to.to_path_buf()))?;
     let out = XXHTTPResponse {
