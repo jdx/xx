@@ -16,7 +16,7 @@ duct = "0.13"
 filetime = "0.2"
 flate2 = { version = "1", optional = true }
 globwalk = { version = "0.9", optional = true }
-homedir = "0.2"
+homedir = "0.3"
 log = "0.4"
 miette = "5"
 regex = "1"
