@@ -1,5 +1,6 @@
 use std::collections::BTreeSet;
 use std::fs;
+#[cfg(unix)]
 use std::os::unix::prelude::*;
 use std::path::Path;
 use std::path::PathBuf;
