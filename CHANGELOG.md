@@ -2,11 +2,34 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.1.6] - 2024-08-18
+
+### 🐛 Bug Fixes
+
+- *(deps)* Update rust crate zip to v2.1.2 (#18)
+- *(deps)* Update rust crate tokio to v1.38.0 (#19)
+- *(deps)* Update rust crate regex to v1.10.5 (#20)
+- *(deps)* Update rust crate tar to v0.4.41 (#21)
+- *(deps)* Update rust crate zip to v2.1.3 (#22)
+- *(deps)* Update rust crate reqwest to v0.12.5 (#24)
+- *(deps)* Update rust crate log to v0.4.22 (#26)
+- *(deps)* Update rust crate thiserror to v1.0.62 (#30)
+- *(deps)* Update rust crate thiserror to v1.0.63 (#32)
+- *(deps)* Update rust crate tokio to v1.38.1 (#33)
+- *(deps)* Update rust crate zip to v2.1.5 (#34)
+- *(deps)* Update rust crate tokio to v1.39.2 (#37)
+- *(deps)* Update rust crate flate2 to v1.0.31 (#39)
+- *(deps)* Update rust crate regex to v1.10.6 (#40)
+- *(deps)* Update rust crate filetime to v0.2.24 (#41)
+- *(deps)* Update rust crate zip to v2.1.6 (#42)
+- Chmod zip unarchiving (#43)
+
 ## [1.1.5] - 2024-05-25
 
 ### ⚙️ Miscellaneous Tasks
 
 - Updated deps
+- Release xx version 1.1.5
 
 ## [1.1.4] - 2024-05-25
 
