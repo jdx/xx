@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.1.7] - 2024-08-18
+
+### 🐛 Bug Fixes
+
+- Windows compat
+
 ## [1.1.6] - 2024-08-18
 
 ### 🐛 Bug Fixes
@@ -23,6 +29,10 @@ All notable changes to this project will be documented in this file.
 - *(deps)* Update rust crate filetime to v0.2.24 (#41)
 - *(deps)* Update rust crate zip to v2.1.6 (#42)
 - Chmod zip unarchiving (#43)
+
+### ⚙️ Miscellaneous Tasks
+
+- Release xx version 1.1.6
 
 ## [1.1.5] - 2024-05-25
 

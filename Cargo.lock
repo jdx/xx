@@ -2474,7 +2474,7 @@ dependencies = [
 
 [[package]]
 name = "xx"
-version = "1.1.6"
+version = "1.1.7"
 dependencies = [
  "bzip2",
  "duct",
