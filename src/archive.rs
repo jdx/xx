@@ -53,6 +53,11 @@ pub fn unzip(archive: &Path, destination: &Path) -> XXResult<()> {
             let mut outfile = file::create(&outpath)?;
             std::io::copy(&mut file, &mut outfile)
                 .map_err(|err| XXError::ArchiveIOError(err, outpath.to_path_buf()))?;
+
+            #[cfg(unix)]
+            if let Some(mode) = file.unix_mode() {
+                file::chmod(&outpath, mode)?;
+            }
         }
     }
     Ok(())

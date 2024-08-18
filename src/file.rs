@@ -1,5 +1,6 @@
 use std::collections::BTreeSet;
 use std::fs;
+use std::os::unix::prelude::*;
 use std::path::Path;
 use std::path::PathBuf;
 
@@ -245,13 +246,58 @@ pub fn glob<P: Into<PathBuf>>(input: P) -> XXResult<Vec<PathBuf>> {
 /// display_path("/tmp/foo"); // "/tmp/foo"
 /// ```
 pub fn display_path<P: AsRef<Path>>(path: P) -> String {
-    let home = homedir::get_my_home().unwrap_or_default();
+    let home = homedir::my_home().unwrap_or_default();
     let home = home.unwrap_or("/".into()).to_string_lossy().to_string();
     let path = path.as_ref();
     match path.starts_with(&home) && home != "/" {
         true => path.to_string_lossy().replacen(&home, "~", 1),
         false => path.display().to_string(),
     }
+}
+
+#[cfg(unix)]
+/// Change the mode of a file
+/// # Arguments
+/// * `path` - A path to a file
+/// * `mode` - A mode as an octal number
+/// # Returns
+/// A result
+/// # Errors
+/// Returns an error if the mode cannot be changed
+/// # Example
+/// ```
+/// use xx::file::chmod;
+/// chmod("src/lib.rs", 0o644).unwrap();
+/// ```
+pub fn chmod<P: AsRef<Path>>(path: P, mode: u32) -> XXResult<()> {
+    let path = path.as_ref();
+    debug!("chmod: {mode:o} {path:?}");
+    fs::set_permissions(path, fs::Permissions::from_mode(mode))
+        .map_err(|err| XXError::FileError(err, path.to_path_buf()))?;
+    Ok(())
+}
+
+#[cfg(unix)]
+/// Make a file executable
+/// # Arguments
+/// * `path` - A path to a file
+/// # Returns
+/// A result
+/// # Errors
+/// Returns an error if the file cannot be made executable
+/// # Example
+/// ```
+/// use xx::file::make_executable;
+/// make_executable("src/lib.rs").unwrap();
+/// ```
+pub fn make_executable<P: AsRef<Path>>(path: P) -> XXResult<()> {
+    let path = path.as_ref();
+    let metadata = fs::metadata(path).map_err(|err| XXError::FileError(err, path.to_path_buf()))?;
+    let mode = metadata.permissions().mode();
+    if mode != 0o111 {
+        chmod(path, mode | 0o111)?;
+    }
+    Ok(())
 }
 
 #[cfg(test)]
@@ -296,5 +342,30 @@ mod tests {
         assert_eq!(files.len(), 2);
         assert!(files.contains(&file1));
         assert!(files.contains(&file2));
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn test_chmod() {
+        let tmpdir = test::tempdir();
+        let path = tmpdir.path().join("test.txt");
+        write(&path, "Hello, world!").unwrap();
+        chmod(&path, 0o755).unwrap();
+        let metadata = fs::metadata(&path).unwrap();
+        let mode = metadata.permissions().mode();
+        assert_eq!(format!("{mode:o}"), "100755");
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn test_make_executable() {
+        let tmpdir = test::tempdir();
+        let path = tmpdir.path().join("test.txt");
+        write(&path, "Hello, world!").unwrap();
+        chmod(&path, 0o644).unwrap();
+        make_executable(&path).unwrap();
+        let metadata = fs::metadata(&path).unwrap();
+        let mode = metadata.permissions().mode();
+        assert_eq!(format!("{mode:o}"), "100755");
     }
 }
