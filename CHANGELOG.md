@@ -2,11 +2,21 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.1.8] - 2024-08-19
+
+### 🐛 Bug Fixes
+
+- Statically link xz
+
 ## [1.1.7] - 2024-08-18
 
 ### 🐛 Bug Fixes
 
 - Windows compat
+
+### ⚙️ Miscellaneous Tasks
+
+- Release xx version 1.1.7
 
 ## [1.1.6] - 2024-08-18
 
