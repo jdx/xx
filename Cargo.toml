@@ -25,14 +25,14 @@ sha2 = { version = "0.10", optional = true }
 tar = { version = "0.4", optional = true }
 thiserror = "1"
 tokio = { version = "1", optional = true, features = ["full"] }
-xz = { version = "0.1", optional = true }
+xz2 = { version = "0.1", optional = true, features = ["static"] }
 zip = { version = "2", optional = true }
 
 [features]
 archive = ["archive_untar_bzip2", "archive_untar_gzip", "archive_untar_xz", "archive_unzip"]
 archive_untar_bzip2 = ["tar", "bzip2"]
 archive_untar_gzip = ["tar", "flate2"]
-archive_untar_xz = ["tar", "xz"]
+archive_untar_xz = ["tar", "xz2"]
 archive_unzip = ["zip"]
 glob = ["globwalk"]
 hash = ["sha2"]

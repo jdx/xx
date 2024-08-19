@@ -27,7 +27,7 @@ pub fn untar_bz2(archive: &Path, destination: &Path) -> XXResult<()> {
 #[cfg(feature = "archive_untar_xz")]
 pub fn untar_xz(archive: &Path, destination: &Path) -> XXResult<()> {
     let file = file::open(archive)?;
-    let mut a = tar::Archive::new(xz::read::XzDecoder::new(file));
+    let mut a = tar::Archive::new(xz2::read::XzDecoder::new(file));
     a.unpack(destination)
         .map_err(|err| XXError::ArchiveIOError(err, archive.to_path_buf()))?;
     Ok(())
