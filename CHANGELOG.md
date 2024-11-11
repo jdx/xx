@@ -2,11 +2,31 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.1.9] - 2024-11-11
+
+### 🐛 Bug Fixes
+
+- *(deps)* Update rust crate flate2 to v1.0.33 (#44)
+- *(deps)* Update rust crate reqwest to v0.12.7 (#45)
+- *(deps)* Update rust crate filetime to v0.2.25 (#47)
+- *(deps)* Update rust crate flate2 to v1.0.34 (#48)
+- *(deps)* Update rust crate tar to v0.4.42 (#49)
+- *(deps)* Update rust crate homedir to v0.3.4 (#50)
+- *(deps)* Update rust crate reqwest to v0.12.8 (#51)
+
+### ⚙️ Miscellaneous Tasks
+
+- Updated deps
+
 ## [1.1.8] - 2024-08-19
 
 ### 🐛 Bug Fixes
 
 - Statically link xz
+
+### ⚙️ Miscellaneous Tasks
+
+- Release xx version 1.1.8
 
 ## [1.1.7] - 2024-08-18
 
