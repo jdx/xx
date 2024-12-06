@@ -54,7 +54,7 @@ pub fn get(path: &Path, force: bool) -> XXResult<Option<fslock::LockFile>> {
     let lock = if force {
         None
     } else {
-        let lock = LockFile::new(path)
+        let lock = FSLock::new(path)
             .with_callback(|l| {
                 debug!("waiting for lock on {}", display_path(l));
             })
