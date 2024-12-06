@@ -2,6 +2,16 @@
 
 All notable changes to this project will be documented in this file.
 
+## [2.0.0] - 2024-12-06
+
+### 🚀 Features
+
+- Fslock
+
+### ⚙️ Miscellaneous Tasks
+
+- Upgraded miette
+
 ## [1.1.9] - 2024-11-11
 
 ### 🐛 Bug Fixes
@@ -17,6 +27,7 @@ All notable changes to this project will be documented in this file.
 ### ⚙️ Miscellaneous Tasks
 
 - Updated deps
+- Release xx version 1.1.9
 
 ## [1.1.8] - 2024-08-19
 
