@@ -8,12 +8,12 @@ use crate::{file, XXError};
 
 pub type OnLockedFn = Box<dyn Fn(&Path)>;
 
-pub struct LockFile {
+pub struct FSLock {
     path: PathBuf,
     on_locked: Option<OnLockedFn>,
 }
 
-impl LockFile {
+impl FSLock {
     pub fn new(path: &Path) -> Self {
         Self {
             path: env::temp_dir().join("fslock").join(hash_to_str(&path)),
