@@ -50,6 +50,7 @@ impl FSLock {
     }
 }
 
+#[must_use]
 pub fn get(path: &Path, force: bool) -> XXResult<Option<fslock::LockFile>> {
     let lock = if force {
         None
