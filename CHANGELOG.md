@@ -2,6 +2,19 @@
 
 All notable changes to this project will be documented in this file.
 
+## [2.0.1] - 2024-12-10
+
+### 🚀 Features
+
+- Reexport fs::file
+
+### ⚙️ Miscellaneous Tasks
+
+- Add hash as dependency of fslock
+- Rename fslock struct
+- Rename fslock struct
+- Must_use
+
 ## [2.0.0] - 2024-12-06
 
 ### 🚀 Features
@@ -11,6 +24,7 @@ All notable changes to this project will be documented in this file.
 ### ⚙️ Miscellaneous Tasks
 
 - Upgraded miette
+- Release xx version 2.0.0
 
 ## [1.1.9] - 2024-11-11
 
