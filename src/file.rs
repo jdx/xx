@@ -10,6 +10,8 @@ use globwalk::GlobWalkerBuilder;
 
 use crate::{XXError, XXResult};
 
+pub use std::fs::*;
+
 /// Open a file for reading
 /// # Arguments
 /// * `path` - A path to a file
