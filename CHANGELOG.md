@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
+## [2.0.3] - 2024-12-12
+
+### 🚀 Features
+
+- Find_up
+
 ## [2.0.2] - 2024-12-10
 
 ### 🚀 Features
@@ -15,6 +21,7 @@ All notable changes to this project will be documented in this file.
 - Rename fslock struct
 - Must_use
 - Release xx version 2.0.1
+- Release xx version 2.0.2
 
 ## [2.0.0] - 2024-12-06
 
