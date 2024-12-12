@@ -280,6 +280,38 @@ pub fn chmod<P: AsRef<Path>>(path: P, mode: u32) -> XXResult<()> {
     Ok(())
 }
 
+/// Find a file in the current directory or any parent directories
+pub fn find_up<FN: AsRef<str>>(from: &Path, filenames: &[FN]) -> Option<PathBuf> {
+    let mut current = from.to_path_buf();
+    loop {
+        for filename in filenames {
+            let path = current.join(filename.as_ref());
+            if path.exists() {
+                return Some(path);
+            }
+        }
+        if !current.pop() {
+            return None;
+        }
+    }
+}
+
+pub fn find_up_all<FN: AsRef<str>>(from: &Path, filenames: &[FN]) -> Vec<PathBuf> {
+    let mut current = from.to_path_buf();
+    let mut paths = vec![];
+    loop {
+        for filename in filenames {
+            let path = current.join(filename.as_ref());
+            if path.exists() {
+                paths.push(path);
+            }
+        }
+        if !current.pop() {
+            return paths;
+        }
+    }
+}
+
 #[cfg(unix)]
 /// Make a file executable
 /// # Arguments
