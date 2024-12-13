@@ -44,7 +44,7 @@ pub enum XXError {
     #[error("{0}\n{1}")]
     #[diagnostic(code(xx::http), url(docsrs))]
     HTTPError(reqwest::Error, String),
-    
+
     #[cfg(feature = "fslock")]
     #[error("{0}\n{1}")]
     #[diagnostic(code(xx::fslock), url(docsrs))]
