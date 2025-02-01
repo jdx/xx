@@ -1,4 +1,7 @@
-use std::path::{Path, PathBuf};
+use std::{
+    path::{Path, PathBuf},
+    vec,
+};
 
 use duct::{cmd, Expression};
 use miette::{miette, Result};
@@ -129,7 +132,7 @@ impl Git {
     }
 }
 
-pub fn clone<D: AsRef<Path>>(url: &str, dir: D) -> XXResult<Git> {
+pub fn clone<D: AsRef<Path>>(url: &str, dir: D, branch: Option<String>) -> XXResult<Git> {
     let dir = dir.as_ref().to_path_buf();
     debug!("cloning {} to {}", url, dir.display());
     if let Some(parent) = dir.parent() {
@@ -142,9 +145,25 @@ pub fn clone<D: AsRef<Path>>(url: &str, dir: D) -> XXResult<Git> {
             err
         ),
     }
-    cmd!("git", "clone", "-q", "--depth", "1", url, &dir)
+
+    let mut cmd_args: Vec<String> = vec![
+        "clone".to_string(),
+        "-q".to_string(),
+        "--depth".to_string(),
+        "1".to_string(),
+        url.to_string(),
+        dir.to_string_lossy().to_string(),
+    ];
+
+    if let Some(value) = branch {
+        cmd_args.push("--branch".to_string());
+        cmd_args.push(value);
+    }
+
+    cmd("git", &cmd_args)
         .run()
         .map_err(|err| XXError::GitError(err, dir.clone()))?;
+
     Ok(Git::new(dir))
 }
 
@@ -171,7 +190,7 @@ mod tests {
         assert!(git.current_sha_short().is_err());
         assert!(git.current_abbrev_ref().is_err());
 
-        let git = clone("https://github.com/jdx/xx", &git.dir).unwrap();
+        let git = clone("https://github.com/jdx/xx", &git.dir, None).unwrap();
         assert!(git.is_repo());
         assert_eq!(
             git.get_remote_url(),
