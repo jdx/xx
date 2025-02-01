@@ -150,18 +150,12 @@ pub fn clone<D: AsRef<Path>>(url: &str, dir: D, clone_options: CloneOptions) -> 
         ),
     }
 
-    let mut cmd_args: Vec<String> = vec![
-        "clone".to_string(),
-        "-q".to_string(),
-        "--depth".to_string(),
-        "1".to_string(),
-        url.to_string(),
-        dir.to_string_lossy().to_string(),
-    ];
+    let dir_str = dir.to_string_lossy().to_string();
+    let mut cmd_args = vec!["clone", "-q", "--depth", "1", &url, &dir_str];
 
-    if let Some(value) = clone_options.branch {
-        cmd_args.push("--branch".to_string());
-        cmd_args.push(value);
+    if let Some(branch) = clone_options.branch.as_ref() {
+        cmd_args.push("--branch");
+        cmd_args.push(&branch);
     }
 
     cmd("git", &cmd_args)
