@@ -17,18 +17,8 @@ alias = "t"
 run = "cargo test --all --all-features -- --nocapture"
 env = { RUST_LOG = "xx=trace" }
 
-[tasks.coverage]
-alias = "cov"
-depends = ["build"]
-run = [
-  "cargo llvm-cov --no-report --all --all-features -- --nocapture",
-  "cargo llvm-cov report --lcov --output-path coverage.lcov",
-  "cargo llvm-cov report",
-]
-env = { RUST_LOG = "xx=trace" }
-
 [tasks.ci]
-depends = ["build", "lint", "coverage"]
+depends = ["lint", "test"]
 
 [tasks.pre-commit]
 depends = ["lint", "test"]
