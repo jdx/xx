@@ -16,6 +16,12 @@ pub struct CloneOptions {
     pub branch: Option<String>,
 }
 
+impl Default for CloneOptions {
+    fn default() -> Self {
+        Self { branch: None }
+    }    
+}
+
 macro_rules! git_cmd {
     ( $dir:expr $(, $arg:expr )* $(,)? ) => {
         {
@@ -188,7 +194,7 @@ mod tests {
         assert!(git.current_sha_short().is_err());
         assert!(git.current_abbrev_ref().is_err());
 
-        let git = clone("https://github.com/jdx/xx", &git.dir, None).unwrap();
+        let git = clone("https://github.com/jdx/xx", &git.dir, CloneOptions::default()).unwrap();
         assert!(git.is_repo());
         assert_eq!(
             git.get_remote_url(),
