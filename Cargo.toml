@@ -7,6 +7,7 @@ license = "MIT"
 description = "A collection of useful Rust macros and small functions."
 documentation = "https://docs.rs/xx"
 repository = "https://github.com/jdx/xx"
+include = ["src", "CHANGELOG.md", "README.md", "LICENSE", "Cargo.toml", "Cargo.lock"]
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
