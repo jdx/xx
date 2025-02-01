@@ -12,6 +12,10 @@ pub struct Git {
     pub dir: PathBuf,
 }
 
+pub struct CloneOptions {
+    pub branch: Option<String>,
+}
+
 macro_rules! git_cmd {
     ( $dir:expr $(, $arg:expr )* $(,)? ) => {
         {
@@ -132,7 +136,7 @@ impl Git {
     }
 }
 
-pub fn clone<D: AsRef<Path>>(url: &str, dir: D, branch: Option<String>) -> XXResult<Git> {
+pub fn clone<D: AsRef<Path>>(url: &str, dir: D, clone_options: CloneOptions) -> XXResult<Git> {
     let dir = dir.as_ref().to_path_buf();
     debug!("cloning {} to {}", url, dir.display());
     if let Some(parent) = dir.parent() {
@@ -155,7 +159,7 @@ pub fn clone<D: AsRef<Path>>(url: &str, dir: D, branch: Option<String>) -> XXRes
         dir.to_string_lossy().to_string(),
     ];
 
-    if let Some(value) = branch {
+    if let Some(value) = clone_options.branch {
         cmd_args.push("--branch".to_string());
         cmd_args.push(value);
     }
