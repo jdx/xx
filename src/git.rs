@@ -12,16 +12,6 @@ pub struct Git {
     pub dir: PathBuf,
 }
 
-pub struct CloneOptions {
-    pub branch: Option<String>,
-}
-
-impl Default for CloneOptions {
-    fn default() -> Self {
-        Self { branch: None }
-    }    
-}
-
 macro_rules! git_cmd {
     ( $dir:expr $(, $arg:expr )* $(,)? ) => {
         {
@@ -142,7 +132,7 @@ impl Git {
     }
 }
 
-pub fn clone<D: AsRef<Path>>(url: &str, dir: D, clone_options: CloneOptions) -> XXResult<Git> {
+pub fn clone<D: AsRef<Path>>(url: &str, dir: D, clone_options: &CloneOptions) -> XXResult<Git> {
     let dir = dir.as_ref().to_path_buf();
     debug!("cloning {} to {}", url, dir.display());
     if let Some(parent) = dir.parent() {
@@ -161,7 +151,7 @@ pub fn clone<D: AsRef<Path>>(url: &str, dir: D, clone_options: CloneOptions) -> 
 
     if let Some(branch) = clone_options.branch.as_ref() {
         cmd_args.push("--branch");
-        cmd_args.push(&branch);
+        cmd_args.push(branch);
     }
 
     cmd("git", &cmd_args)
@@ -194,7 +184,12 @@ mod tests {
         assert!(git.current_sha_short().is_err());
         assert!(git.current_abbrev_ref().is_err());
 
-        let git = clone("https://github.com/jdx/xx", &git.dir, CloneOptions::default()).unwrap();
+        let git = clone(
+            "https://github.com/jdx/xx",
+            &git.dir,
+            &CloneOptions::default(),
+        )
+        .unwrap();
         assert!(git.is_repo());
         assert_eq!(
             git.get_remote_url(),
@@ -202,5 +197,17 @@ mod tests {
         );
 
         file::remove_dir_all("/tmp/xx").unwrap();
+    }
+}
+
+#[derive(Default)]
+pub struct CloneOptions {
+    branch: Option<String>,
+}
+
+impl CloneOptions {
+    pub fn branch(mut self, branch: &str) -> Self {
+        self.branch = Some(branch.to_string());
+        self
     }
 }
