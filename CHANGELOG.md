@@ -2,11 +2,35 @@
 
 All notable changes to this project will be documented in this file.
 
+## [2.0.4] - 2025-02-01
+
+### 🚀 Features
+
+- Add branch support on clone (#71)
+
+### 🐛 Bug Fixes
+
+- *(deps)* Update rust crate bzip2 to 0.5 (#62)
+
+### ⚙️ Miscellaneous Tasks
+
+- Lint issue
+- Updated deps
+- Cargo up
+- Cargo up
+- Always save cache
+- Release hook info
+- Set cargo include
+
 ## [2.0.3] - 2024-12-12
 
 ### 🚀 Features
 
 - Find_up
+
+### ⚙️ Miscellaneous Tasks
+
+- Release xx version 2.0.3
 
 ## [2.0.2] - 2024-12-10
 
