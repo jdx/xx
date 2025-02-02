@@ -152,6 +152,8 @@ pub fn clone<D: AsRef<Path>>(url: &str, dir: D, clone_options: &CloneOptions) ->
     if let Some(branch) = clone_options.branch.as_ref() {
         cmd_args.push("--branch");
         cmd_args.push(branch);
+        cmd_args.push("--single-branch");
+        cmd_args.push("-c advice.detachedHead=false");
     }
 
     cmd("git", &cmd_args)
@@ -191,6 +193,32 @@ mod tests {
         )
         .unwrap();
         assert!(git.is_repo());
+        assert_eq!(
+            git.get_remote_url(),
+            Some("https://github.com/jdx/xx".to_string())
+        );
+
+        file::remove_dir_all("/tmp/xx").unwrap();
+    }
+
+    #[test]
+    fn test_git_with_options() {
+        file::remove_dir_all("/tmp/xx").unwrap_or(());
+        let git = Git::new(PathBuf::from("/tmp/xx"));
+        assert!(!git.is_repo());
+        assert_eq!(git.get_remote_url(), None);
+        assert!(git.current_branch().is_err());
+        assert!(git.current_sha().is_err());
+        assert!(git.current_sha_short().is_err());
+        assert!(git.current_abbrev_ref().is_err());
+
+        let clone_options = CloneOptions::default().branch("v2.0.0");
+
+        let git = clone("https://github.com/jdx/xx", &git.dir, &clone_options).unwrap();
+        assert!(git.is_repo());
+        assert!(git
+            .current_sha()
+            .is_ok_and(|s| s == "e5352617769f0edff7758713d05fff6b6ddf1266"));
         assert_eq!(
             git.get_remote_url(),
             Some("https://github.com/jdx/xx".to_string())
