@@ -153,7 +153,8 @@ pub fn clone<D: AsRef<Path>>(url: &str, dir: D, clone_options: &CloneOptions) ->
         cmd_args.push("--branch");
         cmd_args.push(branch);
         cmd_args.push("--single-branch");
-        cmd_args.push("-c advice.detachedHead=false");
+        cmd_args.push("-c");
+        cmd_args.push("advice.detachedHead=false");
     }
 
     cmd("git", &cmd_args)
