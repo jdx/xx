@@ -335,6 +335,11 @@ pub fn make_executable<P: AsRef<Path>>(path: P) -> XXResult<()> {
     Ok(())
 }
 
+#[cfg(windows)]
+pub fn make_executable<P: AsRef<Path>>(_path: P) -> XXResult<()> {
+    Ok(())
+}
+
 #[cfg(test)]
 mod tests {
     use pretty_assertions::assert_str_eq;
