@@ -2,6 +2,18 @@
 
 All notable changes to this project will be documented in this file.
 
+## [2.0.5] - 2025-02-17
+
+### 🐛 Bug Fixes
+
+- Clone options (#72)
+- Add stub make_executable for windows
+
+### ⚙️ Miscellaneous Tasks
+
+- Updated deps
+- Fix cargo includes
+
 ## [2.0.4] - 2025-02-01
 
 ### 🚀 Features
@@ -21,6 +33,7 @@ All notable changes to this project will be documented in this file.
 - Always save cache
 - Release hook info
 - Set cargo include
+- Release xx version 2.0.4
 
 ## [2.0.3] - 2024-12-12
 
