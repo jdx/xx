@@ -3,7 +3,7 @@ use std::path::Path;
 
 use reqwest::IntoUrl;
 
-use crate::{error, file, XXError, XXResult};
+use crate::{XXError, XXResult, error, file};
 
 pub struct XXHTTPResponse {
     pub status: reqwest::StatusCode,

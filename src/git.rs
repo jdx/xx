@@ -3,10 +3,10 @@ use std::{
     vec,
 };
 
-use duct::{cmd, Expression};
-use miette::{miette, Result};
+use duct::{Expression, cmd};
+use miette::{Result, miette};
 
-use crate::{file, XXError, XXResult};
+use crate::{XXError, XXResult, file};
 
 pub struct Git {
     pub dir: PathBuf,
@@ -217,9 +217,10 @@ mod tests {
 
         let git = clone("https://github.com/jdx/xx", &git.dir, &clone_options).unwrap();
         assert!(git.is_repo());
-        assert!(git
-            .current_sha()
-            .is_ok_and(|s| s == "e5352617769f0edff7758713d05fff6b6ddf1266"));
+        assert!(
+            git.current_sha()
+                .is_ok_and(|s| s == "e5352617769f0edff7758713d05fff6b6ddf1266")
+        );
         assert_eq!(
             git.get_remote_url(),
             Some("https://github.com/jdx/xx".to_string())

@@ -4,7 +4,7 @@ use std::path::{Path, PathBuf};
 
 use crate::file::display_path;
 use crate::hash::hash_to_str;
-use crate::{file, XXError};
+use crate::{XXError, file};
 
 pub type OnLockedFn = Box<dyn Fn(&Path)>;
 

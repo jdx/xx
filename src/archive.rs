@@ -1,7 +1,7 @@
 /// Archive file handling functions.
 use std::path::Path;
 
-use crate::{file, XXError, XXResult};
+use crate::{XXError, XXResult, file};
 
 /// Unpack a .tar.gz archive to a destination directory.
 #[cfg(feature = "archive_untar_gzip")]

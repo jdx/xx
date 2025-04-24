@@ -1,14 +1,14 @@
-use std::collections::hash_map::DefaultHasher;
 use std::collections::HashMap;
+use std::collections::hash_map::DefaultHasher;
 use std::hash::{Hash, Hasher};
 use std::io::{Read, Write};
 use std::path::Path;
 
-use sha2::digest::Output;
 use sha2::Digest;
+use sha2::digest::Output;
 
 use crate::file::display_path;
-use crate::{bail, file, XXError, XXResult};
+use crate::{XXError, XXResult, bail, file};
 
 /// Calculate the hash of a value
 /// # Arguments
