@@ -178,8 +178,8 @@ mod tests {
 
     #[test]
     fn test_git() {
-        file::remove_dir_all("/tmp/xx").unwrap_or(());
-        let git = Git::new(PathBuf::from("/tmp/xx"));
+        let tmp = tempfile::tempdir().unwrap();
+        let git = Git::new(tmp.path().to_path_buf());
         assert!(!git.is_repo());
         assert_eq!(git.get_remote_url(), None);
         assert!(git.current_branch().is_err());
@@ -199,13 +199,13 @@ mod tests {
             Some("https://github.com/jdx/xx".to_string())
         );
 
-        file::remove_dir_all("/tmp/xx").unwrap();
+        file::remove_dir_all(tmp.path()).unwrap();
     }
 
     #[test]
     fn test_git_with_options() {
-        file::remove_dir_all("/tmp/xx").unwrap_or(());
-        let git = Git::new(PathBuf::from("/tmp/xx"));
+        let tmp = tempfile::tempdir().unwrap();
+        let git = Git::new(tmp.path().to_path_buf());
         assert!(!git.is_repo());
         assert_eq!(git.get_remote_url(), None);
         assert!(git.current_branch().is_err());

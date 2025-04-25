@@ -139,7 +139,7 @@ pub fn mv<P: AsRef<Path>, Q: AsRef<Path>>(from: P, to: Q) -> XXResult<()> {
 /// # Example
 /// ```
 /// use xx::file::remove_dir_all;
-/// remove_dir_all("/tmp/foo").unwrap();
+/// remove_dir_all("/tmp/dir-to-remove").unwrap();
 /// ```
 pub fn remove_dir_all<P: AsRef<Path>>(path: P) -> XXResult<()> {
     let path = path.as_ref();
