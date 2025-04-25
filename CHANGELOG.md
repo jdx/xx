@@ -2,6 +2,24 @@
 
 All notable changes to this project will be documented in this file.
 
+## [2.1.0] - 2025-04-25
+
+### 🚀 Features
+
+- Added duct cmd expression
+- *(process)* Added arg/args
+
+### 🧪 Testing
+
+- Harden tests
+
+### ⚙️ Miscellaneous Tasks
+
+- Bump deps
+- Remove -x
+- Added hk
+- Added pkl
+
 ## [2.0.5] - 2025-02-17
 
 ### 🐛 Bug Fixes
@@ -13,6 +31,7 @@ All notable changes to this project will be documented in this file.
 
 - Updated deps
 - Fix cargo includes
+- Release xx version 2.0.5
 
 ## [2.0.4] - 2025-02-01
 
