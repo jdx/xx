@@ -270,7 +270,7 @@ pub fn display_path<P: AsRef<Path>>(path: P) -> String {
 /// # Example
 /// ```
 /// use xx::file::chmod;
-/// chmod("src/lib.rs", 0o644).unwrap();
+/// chmod("test/data/mybin", 0o644).unwrap();
 /// ```
 pub fn chmod<P: AsRef<Path>>(path: P, mode: u32) -> XXResult<()> {
     let path = path.as_ref();
@@ -323,7 +323,7 @@ pub fn find_up_all<FN: AsRef<str>>(from: &Path, filenames: &[FN]) -> Vec<PathBuf
 /// # Example
 /// ```
 /// use xx::file::make_executable;
-/// make_executable("src/lib.rs").unwrap();
+/// make_executable("test/data/mybin").unwrap();
 /// ```
 pub fn make_executable<P: AsRef<Path>>(path: P) -> XXResult<()> {
     let path = path.as_ref();
