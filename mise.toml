@@ -7,10 +7,7 @@ tasks.clean = "cargo clean"
 [tasks.lint]
 alias = "l"
 depends = ["build"]
-run = [
-  "cargo clippy --all --all-features -- -D warnings",
-  "cargo fmt --all -- --check",
-]
+run = "hk check -a"
 
 [tasks.test]
 alias = "t"
@@ -28,3 +25,4 @@ RUST_TEST_THREADS = '1'
 
 [tools]
 "cargo:cargo-llvm-cov" = "latest"
+hk = "latest"
