@@ -26,3 +26,4 @@ RUST_TEST_THREADS = '1'
 [tools]
 "cargo:cargo-llvm-cov" = "latest"
 hk = "latest"
+pkl = "latest"
