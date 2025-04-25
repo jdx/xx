@@ -32,10 +32,12 @@ pub fn check_status(status: ExitStatus) -> io::Result<()> {
     Err(io::Error::new(io::ErrorKind::Other, msg))
 }
 
+#[derive(Debug, Default, Clone)]
 pub struct XXExpression {
-    expr: duct::Expression,
     program: OsString,
     args: Vec<OsString>,
+    stdout_capture: bool,
+    stderr_capture: bool,
 }
 
 pub fn cmd<T, U>(program: T, args: U) -> XXExpression
@@ -46,45 +48,57 @@ where
 {
     let program = program.to_executable();
     let args = args.into_iter().map(|arg| arg.into()).collect::<Vec<_>>();
-    let expr = duct::cmd(program.clone(), args.clone());
     XXExpression {
-        expr,
         program,
         args,
+        ..Default::default()
     }
 }
 
 impl XXExpression {
-    pub fn stdout_capture(self) -> Self {
-        let expr = self.expr.stdout_capture();
-        Self {
-            expr,
-            program: self.program,
-            args: self.args,
-        }
+    pub fn stdout_capture(mut self) -> Self {
+        self.stdout_capture = true;
+        self
     }
 
-    pub fn stderr_capture(self) -> Self {
-        let expr = self.expr.stderr_capture();
-        Self {
-            expr,
-            program: self.program,
-            args: self.args,
-        }
+    pub fn stderr_capture(mut self) -> Self {
+        self.stderr_capture = true;
+        self
+    }
+
+    pub fn arg(mut self, arg: impl Into<OsString>) -> Self {
+        self.args.push(arg.into());
+        self
+    }
+
+    pub fn args(mut self, args: impl IntoIterator<Item = impl Into<OsString>>) -> Self {
+        self.args.extend(args.into_iter().map(|arg| arg.into()));
+        self
     }
 
     pub fn run(&self) -> XXResult<Output> {
         debug!("$ {}", self);
-        self.expr
-            .run()
+        let expr = self.build_expr();
+        expr.run()
             .map_err(|err| XXError::ProcessError(err, self.to_string()))
     }
 
     pub fn read(&self) -> XXResult<String> {
         debug!("$ {}", self);
-        self.expr
-            .read()
+        let expr = self.build_expr();
+        expr.read()
             .map_err(|err| XXError::ProcessError(err, self.to_string()))
+    }
+
+    fn build_expr(&self) -> duct::Expression {
+        let mut expr = duct::cmd(self.program.clone(), self.args.clone());
+        if self.stdout_capture {
+            expr = expr.stdout_capture();
+        }
+        if self.stderr_capture {
+            expr = expr.stderr_capture();
+        }
+        expr
     }
 }
 
@@ -117,8 +131,8 @@ mod tests {
 
     #[test]
     fn test_cmd_read() {
-        let expr = cmd("echo", ["hello", "world"]);
+        let expr = cmd("echo", ["hello"]).arg("world").args(["foo", "bar"]);
         let output = expr.read().unwrap();
-        assert_eq!(output, "hello world");
+        assert_eq!(output, "hello world foo bar");
     }
 }
