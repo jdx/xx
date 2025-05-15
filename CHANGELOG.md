@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
+## [2.1.1] - 2025-05-15
+
+### ⚙️ Miscellaneous Tasks
+
+- Updated deps
+
 ## [2.1.0] - 2025-04-25
 
 ### 🚀 Features
@@ -19,6 +25,7 @@ All notable changes to this project will be documented in this file.
 - Remove -x
 - Added hk
 - Added pkl
+- Release xx version 2.1.0
 
 ## [2.0.5] - 2025-02-17
 
