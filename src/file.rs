@@ -627,11 +627,11 @@ mod tests {
     fn test_append() {
         let tmpdir = test::tempdir();
         let path = tmpdir.path().join("append_test.txt");
-        
+
         // Test appending to non-existent file
         append(&path, "Line 1\n").unwrap();
         assert_str_eq!(read_to_string(&path).unwrap(), "Line 1\n");
-        
+
         // Test appending to existing file
         append(&path, "Line 2\n").unwrap();
         assert_str_eq!(read_to_string(&path).unwrap(), "Line 1\nLine 2\n");
@@ -645,11 +645,11 @@ mod tests {
         unsafe {
             std::env::set_current_dir(&tmpdir).unwrap();
         }
-        
+
         // Test with a filename that has no parent directory
         append("test.txt", "content").unwrap();
         assert_str_eq!(read_to_string("test.txt").unwrap(), "content");
-        
+
         // Restore original directory
         unsafe {
             std::env::set_current_dir(original_dir).unwrap();
@@ -661,18 +661,24 @@ mod tests {
         let tmpdir = test::tempdir();
         let src_dir = tmpdir.path().join("src");
         let dest_dir = tmpdir.path().join("dest");
-        
+
         // Create source directory structure
         mkdirp(src_dir.join("subdir")).unwrap();
         write(src_dir.join("file1.txt"), "content1").unwrap();
         write(src_dir.join("subdir/file2.txt"), "content2").unwrap();
-        
+
         // Copy directory
         copy_dir_all(&src_dir, &dest_dir).unwrap();
-        
+
         // Verify contents
-        assert_str_eq!(read_to_string(dest_dir.join("file1.txt")).unwrap(), "content1");
-        assert_str_eq!(read_to_string(dest_dir.join("subdir/file2.txt")).unwrap(), "content2");
+        assert_str_eq!(
+            read_to_string(dest_dir.join("file1.txt")).unwrap(),
+            "content1"
+        );
+        assert_str_eq!(
+            read_to_string(dest_dir.join("subdir/file2.txt")).unwrap(),
+            "content2"
+        );
     }
 
     #[test]
@@ -680,12 +686,12 @@ mod tests {
         let tmpdir = test::tempdir();
         let empty_dir = tmpdir.path().join("empty");
         let non_empty_dir = tmpdir.path().join("non_empty");
-        
+
         mkdirp(&empty_dir).unwrap();
         mkdirp(&non_empty_dir).unwrap();
-        
+
         assert!(is_empty_dir(&empty_dir).unwrap());
-        
+
         write(non_empty_dir.join("file.txt"), "content").unwrap();
         assert!(!is_empty_dir(&non_empty_dir).unwrap());
     }
@@ -698,13 +704,13 @@ mod tests {
             // sh should exist on Unix systems
             assert!(which("sh").is_some());
         }
-        
+
         #[cfg(windows)]
         {
             // cmd should exist on Windows systems
             assert!(which("cmd").is_some());
         }
-        
+
         // Test non-existent command
         assert!(which("definitely_not_a_real_command_xyz123").is_none());
     }
@@ -713,10 +719,10 @@ mod tests {
     fn test_size() {
         let tmpdir = test::tempdir();
         let path = tmpdir.path().join("size_test.txt");
-        
+
         write(&path, "12345").unwrap();
         assert_eq!(size(&path).unwrap(), 5);
-        
+
         write(&path, "1234567890").unwrap();
         assert_eq!(size(&path).unwrap(), 10);
     }
