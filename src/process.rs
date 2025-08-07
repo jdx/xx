@@ -29,7 +29,7 @@ pub fn check_status(status: ExitStatus) -> io::Result<()> {
     } else {
         "terminated by signal".to_string()
     };
-    Err(io::Error::new(io::ErrorKind::Other, msg))
+    Err(io::Error::other(msg))
 }
 
 #[derive(Debug, Default, Clone)]
@@ -77,14 +77,14 @@ impl XXExpression {
     }
 
     pub fn run(&self) -> XXResult<Output> {
-        debug!("$ {}", self);
+        debug!("$ {self}");
         let expr = self.build_expr();
         expr.run()
             .map_err(|err| XXError::ProcessError(err, self.to_string()))
     }
 
     pub fn read(&self) -> XXResult<String> {
-        debug!("$ {}", self);
+        debug!("$ {self}");
         let expr = self.build_expr();
         expr.read()
             .map_err(|err| XXError::ProcessError(err, self.to_string()))

@@ -53,7 +53,7 @@ impl Git {
             "--prune",
             "--update-head-ok",
             "origin",
-            &format!("{}:{}", gitref, gitref),
+            &format!("{gitref}:{gitref}"),
         ))?;
         let prev_rev = self.current_sha()?;
         exec(git_cmd!(
@@ -139,11 +139,8 @@ pub fn clone<D: AsRef<Path>>(url: &str, dir: D, clone_options: &CloneOptions) ->
         file::mkdirp(parent)?;
     }
     match get_git_version() {
-        Ok(version) => trace!("git version: {}", version),
-        Err(err) => warn!(
-            "failed to get git version: {:#}\n Git is required to use mise.",
-            err
-        ),
+        Ok(version) => trace!("git version: {version}"),
+        Err(err) => warn!("failed to get git version: {err:#}\n Git is required to use mise."),
     }
 
     let dir_str = dir.to_string_lossy().to_string();
