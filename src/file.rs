@@ -26,7 +26,7 @@ pub use std::fs::*;
 /// ```
 pub fn open<P: AsRef<Path>>(path: P) -> XXResult<fs::File> {
     let path = path.as_ref();
-    debug!("open: {:?}", path);
+    debug!("open: {path:?}");
     fs::File::open(path).map_err(|err| XXError::FileError(err, path.to_path_buf()))
 }
 
@@ -45,7 +45,7 @@ pub fn open<P: AsRef<Path>>(path: P) -> XXResult<fs::File> {
 /// ```
 pub fn create<P: AsRef<Path>>(path: P) -> XXResult<fs::File> {
     let path = path.as_ref();
-    debug!("create: {:?}", path);
+    debug!("create: {path:?}");
     fs::File::create(path).map_err(|err| XXError::FileError(err, path.to_path_buf()))
 }
 
@@ -110,7 +110,7 @@ pub fn mkdirp<P: AsRef<Path>>(path: P) -> XXResult<()> {
     if path.exists() {
         return Ok(());
     }
-    debug!("mkdirp: {:?}", path);
+    debug!("mkdirp: {path:?}");
     fs::create_dir_all(path).map_err(|err| XXError::FileError(err, path.to_path_buf()))?;
     Ok(())
 }
@@ -127,7 +127,7 @@ pub fn mkdirp<P: AsRef<Path>>(path: P) -> XXResult<()> {
 pub fn mv<P: AsRef<Path>, Q: AsRef<Path>>(from: P, to: Q) -> XXResult<()> {
     let from = from.as_ref();
     let to = to.as_ref();
-    debug!("mv: {:?} -> {:?}", from, to);
+    debug!("mv: {from:?} -> {to:?}");
     mkdirp(to.parent().unwrap())?;
     fs::rename(from, to).map_err(|err| XXError::FileError(err, from.to_path_buf()))?;
     Ok(())
@@ -144,7 +144,7 @@ pub fn mv<P: AsRef<Path>, Q: AsRef<Path>>(from: P, to: Q) -> XXResult<()> {
 pub fn remove_dir_all<P: AsRef<Path>>(path: P) -> XXResult<()> {
     let path = path.as_ref();
     if path.exists() {
-        debug!("remove_dir_all: {:?}", path);
+        debug!("remove_dir_all: {path:?}");
         fs::remove_dir_all(path).map_err(|err| XXError::FileError(err, path.to_path_buf()))?;
     }
     Ok(())
