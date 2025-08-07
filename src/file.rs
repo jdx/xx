@@ -393,6 +393,161 @@ pub fn make_executable<P: AsRef<Path>>(_path: P) -> XXResult<()> {
     Ok(())
 }
 
+/// Append content to a file, creating it if it doesn't exist
+/// # Arguments
+/// * `path` - A path to a file
+/// * `contents` - Content to append to the file
+/// # Returns
+/// A result
+/// # Errors
+/// Returns an error if the file cannot be written
+/// # Example
+/// ```
+/// use xx::file;
+/// let tmp = tempfile::tempdir().unwrap();
+/// let path = tmp.path().join("log.txt");
+/// file::append(&path, "First line\n").unwrap();
+/// file::append(&path, "Second line\n").unwrap();
+/// ```
+pub fn append<P: AsRef<Path>, C: AsRef<[u8]>>(path: P, contents: C) -> XXResult<()> {
+    use std::io::Write;
+    let path = path.as_ref();
+    debug!("append: {path:?}");
+    mkdirp(path.parent().unwrap())?;
+    let mut file = fs::OpenOptions::new()
+        .create(true)
+        .append(true)
+        .open(path)
+        .map_err(|err| XXError::FileError(err, path.to_path_buf()))?;
+    file.write_all(contents.as_ref())
+        .map_err(|err| XXError::FileError(err, path.to_path_buf()))?;
+    Ok(())
+}
+
+/// Copy a directory recursively
+/// # Arguments
+/// * `from` - Source directory path
+/// * `to` - Destination directory path
+/// # Returns
+/// A result
+/// # Errors
+/// Returns an error if the directory cannot be copied
+/// # Example
+/// ```
+/// use xx::file;
+/// file::mkdirp("src_dir").unwrap();
+/// file::write("src_dir/file.txt", "content").unwrap();
+/// file::copy_dir_all("src_dir", "dest_dir").unwrap();
+/// ```
+pub fn copy_dir_all<P: AsRef<Path>, Q: AsRef<Path>>(from: P, to: Q) -> XXResult<()> {
+    let from = from.as_ref();
+    let to = to.as_ref();
+    debug!("copy_dir_all: {from:?} -> {to:?}");
+
+    mkdirp(to)?;
+
+    for entry in fs::read_dir(from).map_err(|err| XXError::FileError(err, from.to_path_buf()))? {
+        let entry = entry.map_err(|err| XXError::FileError(err, from.to_path_buf()))?;
+        let path = entry.path();
+        let dest = to.join(entry.file_name());
+
+        if path.is_dir() {
+            copy_dir_all(&path, &dest)?;
+        } else {
+            fs::copy(&path, &dest).map_err(|err| XXError::FileError(err, path.clone()))?;
+        }
+    }
+    Ok(())
+}
+
+/// Get the size of a file in bytes
+/// # Arguments
+/// * `path` - A path to a file
+/// # Returns
+/// The size of the file in bytes
+/// # Errors
+/// Returns an error if the file metadata cannot be read
+/// # Example
+/// ```
+/// use xx::file;
+/// file::write("test.txt", "Hello").unwrap();
+/// let size = file::size("test.txt").unwrap();
+/// assert_eq!(size, 5);
+/// ```
+pub fn size<P: AsRef<Path>>(path: P) -> XXResult<u64> {
+    let path = path.as_ref();
+    let metadata = fs::metadata(path).map_err(|err| XXError::FileError(err, path.to_path_buf()))?;
+    Ok(metadata.len())
+}
+
+/// Check if a directory is empty
+/// # Arguments
+/// * `path` - A path to a directory
+/// # Returns
+/// true if the directory is empty, false otherwise
+/// # Errors
+/// Returns an error if the directory cannot be read
+/// # Example
+/// ```
+/// use xx::file;
+/// let tmp = tempfile::tempdir().unwrap();
+/// let empty_dir = tmp.path().join("empty_dir");
+/// file::mkdirp(&empty_dir).unwrap();
+/// assert!(file::is_empty_dir(&empty_dir).unwrap());
+/// file::write(empty_dir.join("file.txt"), "content").unwrap();
+/// assert!(!file::is_empty_dir(&empty_dir).unwrap());
+/// ```
+pub fn is_empty_dir<P: AsRef<Path>>(path: P) -> XXResult<bool> {
+    let path = path.as_ref();
+    let mut entries =
+        fs::read_dir(path).map_err(|err| XXError::FileError(err, path.to_path_buf()))?;
+    Ok(entries.next().is_none())
+}
+
+/// Find an executable in PATH
+/// # Arguments
+/// * `name` - Name of the executable to find
+/// # Returns
+/// The path to the executable if found
+/// # Example
+/// ```
+/// use xx::file;
+/// if let Some(git_path) = file::which("git") {
+///     println!("Git found at: {}", git_path.display());
+/// }
+/// ```
+pub fn which<S: AsRef<str>>(name: S) -> Option<PathBuf> {
+    let name = name.as_ref();
+
+    // Check if it's already an absolute path
+    let path = Path::new(name);
+    if path.is_absolute() && path.exists() {
+        return Some(path.to_path_buf());
+    }
+
+    // Search in PATH
+    if let Ok(path_env) = std::env::var("PATH") {
+        for dir in std::env::split_paths(&path_env) {
+            let full_path = dir.join(name);
+            if full_path.exists() {
+                return Some(full_path);
+            }
+
+            // On Windows, try with common extensions
+            #[cfg(windows)]
+            {
+                for ext in &["exe", "bat", "cmd"] {
+                    let with_ext = dir.join(format!("{}.{}", name, ext));
+                    if with_ext.exists() {
+                        return Some(with_ext);
+                    }
+                }
+            }
+        }
+    }
+    None
+}
+
 #[cfg(test)]
 mod tests {
     use pretty_assertions::assert_str_eq;
