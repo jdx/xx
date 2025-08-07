@@ -101,6 +101,8 @@ pub use error::{XXError, XXResult};
 
 /// Context management utilities
 pub mod context;
+/// Environment variable parsing utilities
+pub mod env;
 /// Error types and result helpers
 pub mod error;
 /// Enhanced file operations with better error handling

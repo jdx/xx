@@ -39,6 +39,7 @@ xx = { version = "2.1", features = ["archive", "glob", "hash"] }
 - **`file`** - Enhanced file operations with better error handling
 - **`process`** - Process execution utilities
 - **`git`** - Git repository operations
+- **`env`** - Environment variable parsing utilities
 - **`context`** - Context management utilities
 - **`error`** - Error types and result helpers
 
@@ -56,14 +57,42 @@ xx = { version = "2.1", features = ["archive", "glob", "hash"] }
 ```rust
 use xx::file;
 
-// Read file with better error messages
+// Read and write files
 let content = file::read_to_string("config.toml")?;
+file::write("output.txt", "Hello, world!")?;
 
-// Write file, creating parent directories automatically
-file::write("output/data.txt", "Hello, world!")?;
+// Append to files
+file::append("log.txt", "New log entry\n")?;
 
-// Create directory and parents
-file::mkdirp("path/to/deep/directory")?;
+// Directory operations
+file::mkdirp("path/to/directory")?;
+file::copy_dir_all("src_dir", "dest_dir")?;
+assert!(file::is_empty_dir("some_dir")?);
+
+// Find executables
+if let Some(git) = file::which("git") {
+    println!("Git found at: {}", git.display());
+}
+```
+
+### Environment Variables
+
+```rust
+use xx::env;
+
+// Parse boolean environment variables
+if env::var_is_true("VERBOSE") {
+    println!("Verbose mode enabled");
+}
+
+// Parse paths with tilde expansion
+if let Some(config_dir) = env::var_path("CONFIG_DIR") {
+    // ~/.config expands to /home/user/.config
+}
+
+// Parse numeric values
+let threads = env::var_u32("NUM_THREADS").unwrap_or(4);
+let timeout = env::var_i64("TIMEOUT_MS").unwrap_or(5000);
 ```
 
 ### Process Execution
@@ -71,11 +100,12 @@ file::mkdirp("path/to/deep/directory")?;
 ```rust
 use xx::process;
 
-// Run shell command
+// Run shell commands
 let output = process::sh("ls -la")?;
 
 // Build and run commands
-let result = process::cmd("git", &["status"]).read()?;
+let result = process::cmd("git", &["status"])
+    .read()?;
 ```
 
 ### Git Operations
@@ -84,8 +114,8 @@ let result = process::cmd("git", &["status"]).read()?;
 use xx::git::{Git, CloneOptions};
 
 // Clone a repository
-let options = CloneOptions::default().branch("main");
-let repo = xx::git::clone("https://github.com/user/repo", "/tmp/repo", &options)?;
+let opts = CloneOptions::default().branch("main");
+let repo = xx::git::clone("https://github.com/user/repo", "/tmp/repo", &opts)?;
 
 // Work with existing repository
 let git = Git::new("/path/to/repo".into());

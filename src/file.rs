@@ -141,7 +141,9 @@ pub fn read_to_string<P: AsRef<Path>>(path: P) -> XXResult<String> {
 pub fn write<P: AsRef<Path>, C: AsRef<[u8]>>(path: P, contents: C) -> XXResult<()> {
     debug!("write: {:?}", path.as_ref());
     let path = path.as_ref();
-    mkdirp(path.parent().unwrap())?;
+    if let Some(parent) = path.parent() {
+        mkdirp(parent)?;
+    }
     fs::write(path, contents).map_err(|err| XXError::FileError(err, path.to_path_buf()))?;
     Ok(())
 }
@@ -181,7 +183,9 @@ pub fn mv<P: AsRef<Path>, Q: AsRef<Path>>(from: P, to: Q) -> XXResult<()> {
     let from = from.as_ref();
     let to = to.as_ref();
     debug!("mv: {from:?} -> {to:?}");
-    mkdirp(to.parent().unwrap())?;
+    if let Some(parent) = to.parent() {
+        mkdirp(parent)?;
+    }
     fs::rename(from, to).map_err(|err| XXError::FileError(err, from.to_path_buf()))?;
     Ok(())
 }
@@ -393,6 +397,163 @@ pub fn make_executable<P: AsRef<Path>>(_path: P) -> XXResult<()> {
     Ok(())
 }
 
+/// Append content to a file, creating it if it doesn't exist
+/// # Arguments
+/// * `path` - A path to a file
+/// * `contents` - Content to append to the file
+/// # Returns
+/// A result
+/// # Errors
+/// Returns an error if the file cannot be written
+/// # Example
+/// ```
+/// use xx::file;
+/// let tmp = tempfile::tempdir().unwrap();
+/// let path = tmp.path().join("log.txt");
+/// file::append(&path, "First line\n").unwrap();
+/// file::append(&path, "Second line\n").unwrap();
+/// ```
+pub fn append<P: AsRef<Path>, C: AsRef<[u8]>>(path: P, contents: C) -> XXResult<()> {
+    use std::io::Write;
+    let path = path.as_ref();
+    debug!("append: {path:?}");
+    if let Some(parent) = path.parent() {
+        mkdirp(parent)?;
+    }
+    let mut file = fs::OpenOptions::new()
+        .create(true)
+        .append(true)
+        .open(path)
+        .map_err(|err| XXError::FileError(err, path.to_path_buf()))?;
+    file.write_all(contents.as_ref())
+        .map_err(|err| XXError::FileError(err, path.to_path_buf()))?;
+    Ok(())
+}
+
+/// Copy a directory recursively
+/// # Arguments
+/// * `from` - Source directory path
+/// * `to` - Destination directory path
+/// # Returns
+/// A result
+/// # Errors
+/// Returns an error if the directory cannot be copied
+/// # Example
+/// ```
+/// use xx::file;
+/// file::mkdirp("src_dir").unwrap();
+/// file::write("src_dir/file.txt", "content").unwrap();
+/// file::copy_dir_all("src_dir", "dest_dir").unwrap();
+/// ```
+pub fn copy_dir_all<P: AsRef<Path>, Q: AsRef<Path>>(from: P, to: Q) -> XXResult<()> {
+    let from = from.as_ref();
+    let to = to.as_ref();
+    debug!("copy_dir_all: {from:?} -> {to:?}");
+
+    mkdirp(to)?;
+
+    for entry in fs::read_dir(from).map_err(|err| XXError::FileError(err, from.to_path_buf()))? {
+        let entry = entry.map_err(|err| XXError::FileError(err, from.to_path_buf()))?;
+        let path = entry.path();
+        let dest = to.join(entry.file_name());
+
+        if path.is_dir() {
+            copy_dir_all(&path, &dest)?;
+        } else {
+            fs::copy(&path, &dest).map_err(|err| XXError::FileError(err, path.clone()))?;
+        }
+    }
+    Ok(())
+}
+
+/// Get the size of a file in bytes
+/// # Arguments
+/// * `path` - A path to a file
+/// # Returns
+/// The size of the file in bytes
+/// # Errors
+/// Returns an error if the file metadata cannot be read
+/// # Example
+/// ```
+/// use xx::file;
+/// file::write("test.txt", "Hello").unwrap();
+/// let size = file::size("test.txt").unwrap();
+/// assert_eq!(size, 5);
+/// ```
+pub fn size<P: AsRef<Path>>(path: P) -> XXResult<u64> {
+    let path = path.as_ref();
+    let metadata = fs::metadata(path).map_err(|err| XXError::FileError(err, path.to_path_buf()))?;
+    Ok(metadata.len())
+}
+
+/// Check if a directory is empty
+/// # Arguments
+/// * `path` - A path to a directory
+/// # Returns
+/// true if the directory is empty, false otherwise
+/// # Errors
+/// Returns an error if the directory cannot be read
+/// # Example
+/// ```
+/// use xx::file;
+/// let tmp = tempfile::tempdir().unwrap();
+/// let empty_dir = tmp.path().join("empty_dir");
+/// file::mkdirp(&empty_dir).unwrap();
+/// assert!(file::is_empty_dir(&empty_dir).unwrap());
+/// file::write(empty_dir.join("file.txt"), "content").unwrap();
+/// assert!(!file::is_empty_dir(&empty_dir).unwrap());
+/// ```
+pub fn is_empty_dir<P: AsRef<Path>>(path: P) -> XXResult<bool> {
+    let path = path.as_ref();
+    let mut entries =
+        fs::read_dir(path).map_err(|err| XXError::FileError(err, path.to_path_buf()))?;
+    Ok(entries.next().is_none())
+}
+
+/// Find an executable in PATH
+/// # Arguments
+/// * `name` - Name of the executable to find
+/// # Returns
+/// The path to the executable if found
+/// # Example
+/// ```
+/// use xx::file;
+/// if let Some(git_path) = file::which("git") {
+///     println!("Git found at: {}", git_path.display());
+/// }
+/// ```
+pub fn which<S: AsRef<str>>(name: S) -> Option<PathBuf> {
+    let name = name.as_ref();
+
+    // Check if it's already an absolute path
+    let path = Path::new(name);
+    if path.is_absolute() && path.exists() {
+        return Some(path.to_path_buf());
+    }
+
+    // Search in PATH
+    if let Ok(path_env) = std::env::var("PATH") {
+        for dir in std::env::split_paths(&path_env) {
+            let full_path = dir.join(name);
+            if full_path.exists() {
+                return Some(full_path);
+            }
+
+            // On Windows, try with common extensions
+            #[cfg(windows)]
+            {
+                for ext in &["exe", "bat", "cmd"] {
+                    let with_ext = dir.join(format!("{}.{}", name, ext));
+                    if with_ext.exists() {
+                        return Some(with_ext);
+                    }
+                }
+            }
+        }
+    }
+    None
+}
+
 #[cfg(test)]
 mod tests {
     use pretty_assertions::assert_str_eq;
@@ -460,5 +621,109 @@ mod tests {
         let metadata = fs::metadata(&path).unwrap();
         let mode = metadata.permissions().mode();
         assert_eq!(format!("{mode:o}"), "100755");
+    }
+
+    #[test]
+    fn test_append() {
+        let tmpdir = test::tempdir();
+        let path = tmpdir.path().join("append_test.txt");
+
+        // Test appending to non-existent file
+        append(&path, "Line 1\n").unwrap();
+        assert_str_eq!(read_to_string(&path).unwrap(), "Line 1\n");
+
+        // Test appending to existing file
+        append(&path, "Line 2\n").unwrap();
+        assert_str_eq!(read_to_string(&path).unwrap(), "Line 1\nLine 2\n");
+    }
+
+    #[test]
+    fn test_append_no_parent() {
+        // Test that append works with files in current directory (no parent)
+        let tmpdir = test::tempdir();
+        let original_dir = std::env::current_dir().unwrap();
+        unsafe {
+            std::env::set_current_dir(&tmpdir).unwrap();
+        }
+
+        // Test with a filename that has no parent directory
+        append("test.txt", "content").unwrap();
+        assert_str_eq!(read_to_string("test.txt").unwrap(), "content");
+
+        // Restore original directory
+        unsafe {
+            std::env::set_current_dir(original_dir).unwrap();
+        }
+    }
+
+    #[test]
+    fn test_copy_dir_all() {
+        let tmpdir = test::tempdir();
+        let src_dir = tmpdir.path().join("src");
+        let dest_dir = tmpdir.path().join("dest");
+
+        // Create source directory structure
+        mkdirp(src_dir.join("subdir")).unwrap();
+        write(src_dir.join("file1.txt"), "content1").unwrap();
+        write(src_dir.join("subdir/file2.txt"), "content2").unwrap();
+
+        // Copy directory
+        copy_dir_all(&src_dir, &dest_dir).unwrap();
+
+        // Verify contents
+        assert_str_eq!(
+            read_to_string(dest_dir.join("file1.txt")).unwrap(),
+            "content1"
+        );
+        assert_str_eq!(
+            read_to_string(dest_dir.join("subdir/file2.txt")).unwrap(),
+            "content2"
+        );
+    }
+
+    #[test]
+    fn test_is_empty_dir() {
+        let tmpdir = test::tempdir();
+        let empty_dir = tmpdir.path().join("empty");
+        let non_empty_dir = tmpdir.path().join("non_empty");
+
+        mkdirp(&empty_dir).unwrap();
+        mkdirp(&non_empty_dir).unwrap();
+
+        assert!(is_empty_dir(&empty_dir).unwrap());
+
+        write(non_empty_dir.join("file.txt"), "content").unwrap();
+        assert!(!is_empty_dir(&non_empty_dir).unwrap());
+    }
+
+    #[test]
+    fn test_which() {
+        // Test finding a command that should exist on all systems
+        #[cfg(unix)]
+        {
+            // sh should exist on Unix systems
+            assert!(which("sh").is_some());
+        }
+
+        #[cfg(windows)]
+        {
+            // cmd should exist on Windows systems
+            assert!(which("cmd").is_some());
+        }
+
+        // Test non-existent command
+        assert!(which("definitely_not_a_real_command_xyz123").is_none());
+    }
+
+    #[test]
+    fn test_size() {
+        let tmpdir = test::tempdir();
+        let path = tmpdir.path().join("size_test.txt");
+
+        write(&path, "12345").unwrap();
+        assert_eq!(size(&path).unwrap(), 5);
+
+        write(&path, "1234567890").unwrap();
+        assert_eq!(size(&path).unwrap(), 10);
     }
 }
