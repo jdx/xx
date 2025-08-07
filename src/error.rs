@@ -1,8 +1,33 @@
+//! Error types and result helpers
+//!
+//! This module defines the error types used throughout the xx library.
+//! All errors include additional context to help diagnose issues.
+//!
+//! ## Error Types
+//!
+//! - `FileError` - File operations with path context
+//! - `GitError` - Git operations with repository path
+//! - `ProcessError` - Process execution with command context
+//! - Additional feature-specific errors when features are enabled
+//!
+//! ## Usage
+//!
+//! The `XXResult<T>` type alias is provided for convenience:
+//!
+//! ```rust
+//! use xx::XXResult;
+//!
+//! fn my_function() -> XXResult<String> {
+//!     xx::file::read_to_string("config.toml")
+//! }
+//! ```
+
 use std::path::PathBuf;
 
 use miette::Diagnostic;
 use thiserror::Error;
 
+/// Main error type for the xx library
 #[derive(Error, Diagnostic, Debug)]
 pub enum XXError {
     #[error("{0}")]
@@ -52,8 +77,31 @@ pub enum XXError {
     FSLockError(fslock::Error, String),
 }
 
+/// A specialized Result type for xx operations
+///
+/// This type alias is used throughout the xx library for functions that may return an error.
+/// It's equivalent to `Result<T, XXError>`.
+///
+/// ## Example
+///
+/// ```rust
+/// use xx::XXResult;
+///
+/// fn read_config() -> XXResult<String> {
+///     xx::file::read_to_string("config.toml")
+/// }
+/// ```
 pub type XXResult<T> = Result<T, XXError>;
 
+/// Create an XXError with a formatted message
+///
+/// ## Example
+///
+/// ```rust
+/// use xx::error;
+///
+/// let err = error!("Failed to process file: {}", "test.txt");
+/// ```
 #[macro_export]
 macro_rules! error {
     ($($arg:tt)*) => {
@@ -61,6 +109,22 @@ macro_rules! error {
     };
 }
 
+/// Return early with an XXError
+///
+/// This macro is equivalent to `return Err(error!(...))`.
+///
+/// ## Example
+///
+/// ```rust,no_run
+/// use xx::bail;
+///
+/// fn validate(value: i32) -> xx::XXResult<()> {
+///     if value < 0 {
+///         bail!("Value must be non-negative, got {}", value);
+///     }
+///     Ok(())
+/// }
+/// ```
 #[macro_export]
 macro_rules! bail {
     ($($arg:tt)*) => {

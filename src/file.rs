@@ -1,3 +1,56 @@
+//! Enhanced file operations with better error handling
+//!
+//! This module provides improved file I/O operations that enhance the standard library's
+//! filesystem functions with:
+//! - Better error messages that include the file path
+//! - Automatic parent directory creation for write operations
+//! - Convenient helper functions for common operations
+//! - Unix-specific permission handling
+//!
+//! ## Examples
+//!
+//! ```rust,no_run
+//! use xx::file;
+//!
+//! # fn main() -> xx::XXResult<()> {
+//! // Read a file with enhanced error messages
+//! let content = file::read_to_string("config.toml")?;
+//!
+//! // Write a file, automatically creating parent directories
+//! file::write("output/data.txt", "Hello, world!")?;
+//!
+//! // Create a directory and all its parents
+//! file::mkdirp("path/to/deep/directory")?;
+//!
+//! // Move a file with automatic parent directory creation
+//! file::mv("old.txt", "new/location/file.txt")?;
+//!
+//! // Remove a directory and all its contents
+//! file::remove_dir_all("temp")?;
+//! # Ok(())
+//! # }
+//! ```
+//!
+//! ## Feature: `glob`
+//!
+//! When the `glob` feature is enabled, this module provides globbing support:
+//!
+//! ```rust,no_run
+//! # #[cfg(feature = "glob")]
+//! # fn main() -> xx::XXResult<()> {
+//! use xx::file;
+//!
+//! // Find all Rust files
+//! let rust_files = file::glob("src/**/*.rs")?;
+//! for file in rust_files {
+//!     println!("Found: {}", file.display());
+//! }
+//! # Ok(())
+//! # }
+//! # #[cfg(not(feature = "glob"))]
+//! # fn main() {}
+//! ```
+
 use std::collections::BTreeSet;
 use std::fs;
 #[cfg(unix)]

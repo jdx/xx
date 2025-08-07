@@ -1,3 +1,49 @@
+//! Process execution utilities
+//!
+//! This module provides convenient functions and builders for executing external processes
+//! with better ergonomics than the standard library's `std::process` module.
+//!
+//! ## Features
+//!
+//! - Simple shell command execution with `sh()`
+//! - Builder pattern for complex command construction
+//! - Automatic stdout/stderr capture options
+//! - Enhanced error messages that include the command that failed
+//!
+//! ## Examples
+//!
+//! ### Simple shell command
+//!
+//! ```rust,no_run
+//! use xx::process;
+//!
+//! # fn main() -> xx::XXResult<()> {
+//! // Run a shell command and get stdout as a string
+//! let output = process::sh("echo hello world")?;
+//! assert_eq!(output.trim(), "hello world");
+//! # Ok(())
+//! # }
+//! ```
+//!
+//! ### Command builder
+//!
+//! ```rust,no_run
+//! use xx::process;
+//!
+//! # fn main() -> xx::XXResult<()> {
+//! // Build a command with arguments
+//! let output = process::cmd("git", &["status", "--short"])
+//!     .read()?;
+//!
+//! // Capture stdout and stderr separately
+//! let result = process::cmd("make", &["test"])
+//!     .stdout_capture()
+//!     .stderr_capture()
+//!     .run()?;
+//! # Ok(())
+//! # }
+//! ```
+
 use std::process::{Command, ExitStatus};
 use std::{ffi::OsString, fmt, io, process::Output};
 
