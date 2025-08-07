@@ -31,10 +31,11 @@ xz2 = { version = "0.1", optional = true, features = ["static"] }
 zip = { version = "3", optional = true }
 
 [features]
-archive = ["archive_untar_bzip2", "archive_untar_gzip", "archive_untar_xz", "archive_unzip"]
+archive = ["archive_untar_bzip2", "archive_untar_gzip", "archive_untar_xz", "archive_unzip", "archive_ungz"]
 archive_untar_bzip2 = ["tar", "bzip2"]
 archive_untar_gzip = ["tar", "flate2"]
 archive_untar_xz = ["tar", "xz2"]
+archive_ungz = ["flate2"]
 archive_unzip = ["zip"]
 fslock = ["dep:fslock", "hash"]
 glob = ["globwalk"]

@@ -13,6 +13,22 @@ pub fn untar_gz(archive: &Path, destination: &Path) -> XXResult<()> {
     Ok(())
 }
 
+#[cfg(feature = "archive_ungz")]
+pub fn ungz(archive: &Path, destination: &Path) -> XXResult<()> {
+    let file = file::open(archive)?;
+    let mut decoder = flate2::read::GzDecoder::new(file);
+
+    if let Some(parent) = destination.parent() {
+        file::mkdirp(parent)?;
+    }
+    let mut output_file = file::create(destination)?;
+
+    std::io::copy(&mut decoder, &mut output_file)
+        .map_err(|err| XXError::ArchiveIOError(err, archive.to_path_buf()))?;
+
+    Ok(())
+}
+
 /// Unpack a .tar.bz2 archive to a destination directory.
 #[cfg(feature = "archive_untar_bzip2")]
 pub fn untar_bz2(archive: &Path, destination: &Path) -> XXResult<()> {
@@ -132,5 +148,36 @@ mod tests {
             "yep\n"
         );
         fs::remove_dir_all(destination).unwrap();
+    }
+
+    #[cfg(feature = "archive_ungz")]
+    #[test]
+    fn test_ungz() {
+        use flate2::Compression;
+        use flate2::write::GzEncoder;
+        use std::io::Write;
+
+        // Create a temporary gzip file for testing
+        let test_content = "Hello, gzip world!\n";
+        let tmpdir = std::env::temp_dir();
+        let archive_path = tmpdir.join("test_ungz.gz");
+        let destination_path = tmpdir.join("test_ungz_output.txt");
+
+        // Create the gzip file
+        {
+            let file = fs::File::create(&archive_path).unwrap();
+            let mut encoder = GzEncoder::new(file, Compression::default());
+            encoder.write_all(test_content.as_bytes()).unwrap();
+            encoder.finish().unwrap();
+        }
+
+        // Test the ungz function
+        ungz(&archive_path, &destination_path).unwrap();
+        assert!(destination_path.exists());
+        assert_eq!(fs::read_to_string(&destination_path).unwrap(), test_content);
+
+        // Clean up
+        fs::remove_file(&archive_path).unwrap();
+        fs::remove_file(&destination_path).unwrap();
     }
 }
