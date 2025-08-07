@@ -15,11 +15,12 @@ pub mod git;
 pub mod process;
 mod regex;
 
-#[cfg(all(
+#[cfg(any(
     feature = "archive_untar_gzip",
     feature = "archive_untar_bzip2",
     feature = "archive_untar_xz",
     feature = "archive_unzip",
+    feature = "archive_ungz",
 ))]
 pub mod archive;
 

@@ -25,6 +25,7 @@ pub enum XXError {
         feature = "archive_untar_bzip2",
         feature = "archive_untar_xz",
         feature = "archive_unzip",
+        feature = "archive_ungz"
     ))]
     #[error("{0}\n{1}")]
     #[diagnostic(code(xx::archive), url(docsrs))]
