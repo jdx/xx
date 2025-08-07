@@ -1,3 +1,61 @@
+//! Git repository operations
+//!
+//! This module provides high-level git operations for working with repositories,
+//! including cloning, fetching, and querying repository state.
+//!
+//! ## Features
+//!
+//! - Clone repositories with custom options
+//! - Query current branch, SHA, and remote URL
+//! - Update repositories with fetch and checkout
+//! - Automatic safe.directory configuration
+//!
+//! ## Examples
+//!
+//! ### Cloning a repository
+//!
+//! ```rust,no_run
+//! use xx::git::{clone, CloneOptions};
+//!
+//! # fn main() -> xx::XXResult<()> {
+//! // Clone with default options (shallow clone of default branch)
+//! let repo = clone("https://github.com/rust-lang/rust", "/tmp/rust", &CloneOptions::default())?;
+//!
+//! // Clone a specific branch
+//! let options = CloneOptions::default().branch("stable");
+//! let repo = clone("https://github.com/rust-lang/rust", "/tmp/rust-stable", &options)?;
+//! # Ok(())
+//! # }
+//! ```
+//!
+//! ### Working with existing repositories
+//!
+//! ```rust,no_run
+//! use xx::git::Git;
+//! use std::path::PathBuf;
+//!
+//! # fn main() -> xx::XXResult<()> {
+//! let git = Git::new(PathBuf::from("/path/to/repo"));
+//!
+//! // Check if directory is a git repository
+//! if git.is_repo() {
+//!     // Get current branch name
+//!     let branch = git.current_branch()?;
+//!     println!("Current branch: {}", branch);
+//!
+//!     // Get current commit SHA
+//!     let sha = git.current_sha()?;
+//!     println!("Current SHA: {}", sha);
+//!
+//!     // Get remote URL
+//!     if let Some(url) = git.get_remote_url() {
+//!         println!("Remote URL: {}", url);
+//!     }
+//! }
+//! # Ok(())
+//! # }
+//! ```
+
 use std::{
     path::{Path, PathBuf},
     vec,
@@ -8,7 +66,9 @@ use miette::{Result, miette};
 
 use crate::{XXError, XXResult, file};
 
+/// A git repository handle
 pub struct Git {
+    /// The directory containing the git repository
     pub dir: PathBuf,
 }
 
