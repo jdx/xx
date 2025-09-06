@@ -642,6 +642,7 @@ mod tests {
         // Test that append works with files in current directory (no parent)
         let tmpdir = test::tempdir();
         let original_dir = std::env::current_dir().unwrap();
+        #[allow(unused_unsafe)]
         unsafe {
             std::env::set_current_dir(&tmpdir).unwrap();
         }
@@ -651,6 +652,7 @@ mod tests {
         assert_str_eq!(read_to_string("test.txt").unwrap(), "content");
 
         // Restore original directory
+        #[allow(unused_unsafe)]
         unsafe {
             std::env::set_current_dir(original_dir).unwrap();
         }
