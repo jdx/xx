@@ -89,65 +89,65 @@ mod tests {
     #[cfg(feature = "archive_untar_gzip")]
     #[test]
     fn test_untar_gz() {
-        let archive = Path::new("test/data/foo.tar.gz");
-        let destination = Path::new("/tmp/test_untar_gz");
-        let _ = fs::remove_dir_all(destination);
-        untar_gz(archive, destination).unwrap();
+        let archive = Path::new(env!("CARGO_MANIFEST_DIR")).join("test/data/foo.tar.gz");
+        let tmpdir = tempfile::tempdir().unwrap();
+        let destination = tmpdir.path();
+        untar_gz(&archive, destination).unwrap();
         assert!(destination.exists());
         assert!(destination.join("foo/test.txt").exists());
         assert_eq!(
             fs::read_to_string(destination.join("foo/test.txt")).unwrap(),
             "yep\n"
         );
-        fs::remove_dir_all(destination).unwrap();
+        // tmpdir cleanup on drop
     }
 
     #[cfg(feature = "archive_untar_bzip2")]
     #[test]
     fn test_untar_bz2() {
-        let archive = Path::new("test/data/foo.tar.bz2");
-        let destination = Path::new("/tmp/test_untar_bz2");
-        let _ = fs::remove_dir_all(destination);
-        untar_bz2(archive, destination).unwrap();
+        let archive = Path::new(env!("CARGO_MANIFEST_DIR")).join("test/data/foo.tar.bz2");
+        let tmpdir = tempfile::tempdir().unwrap();
+        let destination = tmpdir.path();
+        untar_bz2(&archive, destination).unwrap();
         assert!(destination.exists());
         assert!(destination.join("foo/test.txt").exists());
         assert_eq!(
             fs::read_to_string(destination.join("foo/test.txt")).unwrap(),
             "yep\n"
         );
-        fs::remove_dir_all(destination).unwrap();
+        // tmpdir cleanup on drop
     }
 
     #[cfg(feature = "archive_untar_xz")]
     #[test]
     fn test_untar_xz() {
-        let archive = Path::new("test/data/foo.tar.xz");
-        let destination = Path::new("/tmp/test_untar_xz");
-        let _ = fs::remove_dir_all(destination);
-        untar_xz(archive, destination).unwrap();
+        let archive = Path::new(env!("CARGO_MANIFEST_DIR")).join("test/data/foo.tar.xz");
+        let tmpdir = tempfile::tempdir().unwrap();
+        let destination = tmpdir.path();
+        untar_xz(&archive, destination).unwrap();
         assert!(destination.exists());
         assert!(destination.join("foo/test.txt").exists());
         assert_eq!(
             fs::read_to_string(destination.join("foo/test.txt")).unwrap(),
             "yep\n"
         );
-        fs::remove_dir_all(destination).unwrap();
+        // tmpdir cleanup on drop
     }
 
     #[cfg(feature = "archive_unzip")]
     #[test]
     fn test_unzip() {
-        let archive = Path::new("test/data/foo.zip");
-        let destination = Path::new("/tmp/test_unzip");
-        let _ = fs::remove_dir_all(destination);
-        unzip(archive, destination).unwrap();
+        let archive = Path::new(env!("CARGO_MANIFEST_DIR")).join("test/data/foo.zip");
+        let tmpdir = tempfile::tempdir().unwrap();
+        let destination = tmpdir.path();
+        unzip(&archive, destination).unwrap();
         assert!(destination.exists());
         assert!(destination.join("foo/test.txt").exists());
         assert_eq!(
             fs::read_to_string(destination.join("foo/test.txt")).unwrap(),
             "yep\n"
         );
-        fs::remove_dir_all(destination).unwrap();
+        // tmpdir cleanup on drop
     }
 
     #[cfg(feature = "archive_ungz")]
