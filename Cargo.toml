@@ -18,7 +18,7 @@ filetime = "0.2"
 flate2 = { version = "1", optional = true }
 fslock = { version = "0.2", optional = true }
 globwalk = { version = "0.9", optional = true }
-homedir = "=0.3.6" # can use newer versions once we support rust 1.88+
+homedir = "=0.3.5" # pinned to support rust 1.85+ MSRV
 log = "0.4"
 miette = "7"
 regex = "1"
