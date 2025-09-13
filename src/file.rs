@@ -176,8 +176,11 @@ pub fn mkdirp<P: AsRef<Path>>(path: P) -> XXResult<()> {
 /// * `to` - A path to move the file or directory to
 /// # Example
 /// ```
-/// xx::file::create("/tmp/foo").unwrap();
-/// xx::file::mv("/tmp/foo", "/tmp/bar").unwrap();
+/// # let tmpdir = tempfile::tempdir().unwrap();
+/// # let foo_path = tmpdir.path().join("foo");
+/// # let bar_path = tmpdir.path().join("bar");
+/// xx::file::create(&foo_path).unwrap();
+/// xx::file::mv(&foo_path, &bar_path).unwrap();
 /// ```
 pub fn mv<P: AsRef<Path>, Q: AsRef<Path>>(from: P, to: Q) -> XXResult<()> {
     let from = from.as_ref();

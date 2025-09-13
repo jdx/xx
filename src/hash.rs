@@ -104,9 +104,12 @@ where
 /// Returns an error if the checksum does not match
 /// # Example
 /// ```
-/// use std::path::Path;
+/// # let tmpdir = tempfile::tempdir().unwrap();
+/// # let test_path = tmpdir.path().join("test.txt");
+/// # std::fs::write(&test_path, "foobar").unwrap();
 /// use xx::hash::ensure_checksum_sha256;
-/// ensure_checksum_sha256(Path::new("test/data/foo.txt"), "aec070645fe53ee3b3763059376134f058cc337247c978add178b6ccdfb0019f").unwrap();
+/// // SHA256 hash of "foobar"
+/// ensure_checksum_sha256(&test_path, "c3ab8ff13720e8ad9047dd39466b3c8974e592c2fa383d4a3960714caef0c4f2").unwrap();
 /// ```
 pub fn ensure_checksum_sha256(path: &Path, checksum: &str) -> XXResult<()> {
     let actual = file_hash_sha256(path)?;
@@ -127,9 +130,12 @@ pub fn ensure_checksum_sha256(path: &Path, checksum: &str) -> XXResult<()> {
 /// Returns an error if the checksum does not match
 /// # Example
 /// ```
-/// use std::path::Path;
+/// # let tmpdir = tempfile::tempdir().unwrap();
+/// # let test_path = tmpdir.path().join("test.txt");
+/// # std::fs::write(&test_path, "foobar").unwrap();
 /// use xx::hash::ensure_checksum_sha512;
-/// ensure_checksum_sha512(Path::new("test/data/foo.txt"), "e79b8ad22b34a54be999f4eadde2ee895c208d4b3d83f1954b61255d2556a8b73773c0dc0210aa044ffcca6834839460959cbc9f73d3079262fc8bc935d46262").unwrap();
+/// // SHA512 hash of "foobar"
+/// ensure_checksum_sha512(&test_path, "0a50261ebd1a390fed2bf326f2673c145582a6342d523204973d0219337f81616a8069b012587cf5635f6925f1b56c360230c19b273500ee013e030601bf2425").unwrap();
 /// ```
 pub fn ensure_checksum_sha512(path: &Path, checksum: &str) -> XXResult<()> {
     let actual = file_hash_sha512(path)?;
