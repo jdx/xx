@@ -23,7 +23,7 @@ homedir = "=0.3.5" # pinned to support rust 1.85+ MSRV
 log = "0.4"
 miette = "7"
 regex = "1"
-reqwest = { version = "0.12", optional = true }
+reqwest = { version = "0.12", optional = true, default-features = false }
 sha2 = { version = "0.10", optional = true }
 tar = { version = "0.4", optional = true }
 thiserror = "2"
@@ -41,8 +41,8 @@ archive_unzip = ["zip"]
 fslock = ["dep:fslock", "hash"]
 glob = ["globwalk"]
 hash = ["sha2"]
-http = ["reqwest", "tokio"]
-native-tls = ["reqwest/native-tls"]
+http = ["reqwest", "tokio", "reqwest/gzip", "reqwest/json"]
+native-tls = ["reqwest/native-tls", "reqwest/default-tls"]
 rustls = ["reqwest/rustls-tls"]
 rustls-native-roots = ["reqwest/rustls-tls-native-roots"]
 
