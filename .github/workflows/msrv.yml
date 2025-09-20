@@ -19,4 +19,4 @@ jobs:
       - name: Install cargo-msrv
         run: cargo binstall --no-confirm cargo-msrv
       - name: Verify MSRV
-        run: cargo msrv verify
+        run: cargo-msrv verify
