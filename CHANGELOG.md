@@ -1,3 +1,34 @@
+## [2.1.3] - 2025-09-20
+
+### 🚀 Features
+
+- Set MSRV to 1.85 with GitHub Actions verification (#109)
+- Use mise for all cargo tool management
+
+### 🐛 Bug Fixes
+
+- *(deps)* Update rust crate flate2 to v1.1.2 (#90)
+- *(deps)* Update rust crate homedir to v0.3.6 (#101)
+- *(deps)* Update rust crate log to v0.4.28 (#104)
+- *(deps)* Update rust crate regex to v1.11.2 (#106)
+- *(deps)* Update rust crate reqwest to v0.12.23 (#88)
+- *(deps)* Update rust crate thiserror to v2.0.16 (#100)
+- Cross-platform doc tests for file and hash operations (#107)
+- Downgrade homedir to 0.3.5 for MSRV compatibility
+- Disable reqwest default features to avoid native-tls
+- Remove incorrect patch entry
+- Use cargo-msrv command directly instead of cargo subcommand
+- Correct mise-action install parameter and add cargo-msrv to tools
+- Use correct cargo-binstall tool reference
+
+### 🧪 Testing
+
+- *(archive)* Use CARGO_MANIFEST_DIR fixtures and tempfile destinations (#108)
+
+### ⚙️ Miscellaneous Tasks
+
+- Ignore warnings
+- Use mise-action to install cargo-msrv
 ## [2.1.2] - 2025-08-18
 
 ### 🚀 Features
@@ -16,6 +47,7 @@
 
 - Pin homedir to 0.3.5 for MSRV compatibility
 - Cargo build
+- Release xx version 2.1.2
 ## [2.1.1] - 2025-05-15
 
 ### ⚙️ Miscellaneous Tasks
