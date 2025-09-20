@@ -24,6 +24,8 @@ depends = ["lint", "test"]
 RUST_TEST_THREADS = '1'
 
 [tools]
+cargo-binstall = "latest"
 "cargo:cargo-llvm-cov" = "latest"
+"cargo:cargo-msrv" = "latest"
 hk = "1.12.0"
 pkl = "latest"
