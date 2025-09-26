@@ -234,6 +234,14 @@ impl XXExpression {
     }
 
     pub fn read(&self) -> XXResult<String> {
+        self.read_inner(true)
+    }
+
+    pub fn read_raw(&self) -> XXResult<String> {
+        self.read_inner(false)
+    }
+
+    fn read_inner(&self, trim_trailing_newline: bool) -> XXResult<String> {
         debug!("$ {self}");
         if self.stdout_handler.is_some() || self.stderr_handler.is_some() {
             let mut cmd = Command::new(&self.program);
@@ -328,15 +336,20 @@ impl XXExpression {
                 .map_err(|err| XXError::ProcessError(err, self.to_string()))?;
             let _ = stderr_handle.join();
             check_status(status).map_err(|err| XXError::ProcessError(err, self.to_string()))?;
-            // Match duct's `read()` behavior: trim a single trailing newline
-            if acc.ends_with('\n') {
+            if trim_trailing_newline && acc.ends_with('\n') {
                 let _ = acc.pop();
             }
             return Ok(acc);
         }
         let expr = self.build_expr();
-        expr.read()
-            .map_err(|err| XXError::ProcessError(err, self.to_string()))
+        let result = expr
+            .read()
+            .map_err(|err| XXError::ProcessError(err, self.to_string()))?;
+        if trim_trailing_newline {
+            Ok(result)
+        } else {
+            Ok(result)
+        }
     }
 
     // run_streaming removed; streaming logic is now handled inline in `run()`
