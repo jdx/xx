@@ -342,13 +342,20 @@ impl XXExpression {
             return Ok(acc);
         }
         let expr = self.build_expr();
-        let result = expr
-            .read()
-            .map_err(|err| XXError::ProcessError(err, self.to_string()))?;
         if trim_trailing_newline {
-            Ok(result)
+            expr.read()
+                .map_err(|err| XXError::ProcessError(err, self.to_string()))
         } else {
-            Ok(result)
+            // For read_raw, use stdout_capture to get the raw output
+            let output = expr
+                .stdout_capture()
+                .run()
+                .map_err(|err| XXError::ProcessError(err, self.to_string()))?;
+            String::from_utf8(output.stdout)
+                .map_err(|err| XXError::ProcessError(
+                    io::Error::other(format!("stdout is not valid UTF-8: {}", err)),
+                    self.to_string()
+                ))
         }
     }
 
@@ -535,5 +542,15 @@ mod tests {
         "#;
         let out = cmd("sh", ["-c", script]).read().unwrap();
         assert_eq!(out, "a\nb");
+    }
+
+    #[test]
+    fn test_read_raw_preserves_trailing_newline() {
+        let script = r#"
+            printf 'a\n';
+            printf 'b\n';
+        "#;
+        let out = cmd("sh", ["-c", script]).read_raw().unwrap();
+        assert_eq!(out, "a\nb\n");
     }
 }
