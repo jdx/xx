@@ -19,7 +19,7 @@ pub struct XXHTTPResponse {
 /// # Errors
 /// Returns an error if the URL cannot be fetched
 /// # Example
-/// ```
+/// ```no_run
 /// #[tokio::main]
 /// async fn main() {
 ///     use xx::http::get;
@@ -51,7 +51,7 @@ pub async fn get(url: impl IntoUrl) -> XXResult<XXHTTPResponse> {
 /// # Errors
 /// Returns an error if the file cannot be downloaded or saved
 /// # Example
-/// ```
+/// ```no_run
 /// #[tokio::main]
 /// async fn main() {
 ///     use xx::http::download;
