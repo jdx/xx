@@ -114,6 +114,8 @@ pub mod fslock;
 pub mod git;
 /// Process execution utilities
 pub mod process;
+/// Random generation utilities
+pub mod rand;
 mod regex;
 
 /// Archive extraction utilities (requires one of the archive features)
