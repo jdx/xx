@@ -3,15 +3,14 @@
 //! This module provides utilities for generating random values,
 //! including human-readable random names.
 
-use std::sync::LazyLock;
-
 use rand::prelude::*;
 
 // Word lists inspired by https://github.com/nishanths/rust-haikunator
-static ADJECTIVES: LazyLock<Vec<&'static str>> =
-    LazyLock::new(|| include_str!("adjectives.txt").lines().collect());
-static NOUNS: LazyLock<Vec<&'static str>> =
-    LazyLock::new(|| include_str!("nouns.txt").lines().collect());
+mod adjectives;
+mod nouns;
+
+use adjectives::ADJECTIVES;
+use nouns::NOUNS;
 
 /// Options for generating haiku-style random names
 #[derive(Debug, Clone)]
