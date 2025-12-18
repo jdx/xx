@@ -16,6 +16,13 @@
 
 - Pin homedir to 0.3.5 for MSRV compatibility
 - Cargo build
+## [2.3.0](https://github.com/jdx/xx/compare/v2.2.0...v2.3.0) (2025-12-18)
+
+
+### Features
+
+* trigger 2.3.0 release for haiku module ([#150](https://github.com/jdx/xx/issues/150)) ([36e54ec](https://github.com/jdx/xx/commit/36e54ecdebdf14be8b419cf3c8bbe6125e9ef376))
+
 ## [2.2.0](https://github.com/jdx/xx/compare/v2.1.2...v2.2.0) (2025-12-18)
 
 
