@@ -7,9 +7,11 @@ use rand::prelude::*;
 
 // Word lists inspired by https://github.com/nishanths/rust-haikunator
 mod adjectives;
+mod adverbs;
 mod nouns;
 
 use adjectives::ADJECTIVES;
+use adverbs::ADVERBS;
 use nouns::NOUNS;
 
 /// Options for generating haiku-style random names
@@ -35,9 +37,15 @@ impl Default for HaikuOptions<'_> {
 
 /// Generate a haiku-style random name
 ///
-/// Generates a poetic-themed random name by combining adjectives and nouns,
-/// optionally followed by a random number. Useful for generating unique
-/// identifiers with memorable, human-readable names.
+/// Generates a poetic-themed random name by combining adverbs, adjectives,
+/// and nouns, optionally followed by a random number. Useful for generating
+/// unique identifiers with memorable, human-readable names.
+///
+/// The word pattern is:
+/// - 1 word: adjective
+/// - 2 words: adjective-noun
+/// - 3 words: adverb-adjective-noun
+/// - 4+ words: adverb-adjective-noun-noun...
 ///
 /// # Examples
 ///
@@ -54,7 +62,7 @@ impl Default for HaikuOptions<'_> {
 ///     digits: 0,
 ///     ..Default::default()
 /// });
-/// // e.g., "ancient-moon-wild"
+/// // e.g., "softly-falling-rain"
 ///
 /// // Custom separator and more digits
 /// let name = haiku(&HaikuOptions {
@@ -69,12 +77,19 @@ pub fn haiku(options: &HaikuOptions) -> String {
     let words = options.words.max(1);
     let mut parts: Vec<String> = Vec::with_capacity(words + 1);
 
-    // Alternate between adjectives and nouns
+    // Fixed pattern: [adverb]-adjective-noun[-noun...]
+    // 1 word: adjective
+    // 2 words: adjective-noun
+    // 3 words: adverb-adjective-noun
+    // 4+ words: adverb-adjective-noun-noun...
     for i in 0..words {
-        let word = if i % 2 == 0 {
-            *ADJECTIVES.choose(&mut rng).unwrap()
-        } else {
-            *NOUNS.choose(&mut rng).unwrap()
+        let word = match (words, i) {
+            (1, 0) => *ADJECTIVES.choose(&mut rng).unwrap(),
+            (2, 0) => *ADJECTIVES.choose(&mut rng).unwrap(),
+            (2, 1) => *NOUNS.choose(&mut rng).unwrap(),
+            (_, 0) => *ADVERBS.choose(&mut rng).unwrap(),
+            (_, 1) => *ADJECTIVES.choose(&mut rng).unwrap(),
+            (_, _) => *NOUNS.choose(&mut rng).unwrap(),
         };
         parts.push(word.to_string());
     }
