@@ -21,7 +21,7 @@ pub struct HaikuOptions<'a> {
     pub words: usize,
     /// Separator between words (default: "-")
     pub separator: &'a str,
-    /// Number of digits to append, or 0 for none (default: 2)
+    /// Number of digits to append, or 0 for none (default: 2, max: 9)
     pub digits: usize,
 }
 
@@ -99,9 +99,11 @@ pub fn haiku(options: &HaikuOptions) -> String {
     }
 
     if options.digits > 0 {
-        let max = 10_u32.pow(options.digits as u32);
+        // Cap at 9 digits to avoid u32 overflow (10^10 > u32::MAX)
+        let digits = options.digits.min(9);
+        let max = 10_u32.pow(digits as u32);
         let num: u32 = rng.random_range(0..max);
-        parts.push(format!("{:0width$}", num, width = options.digits));
+        parts.push(format!("{:0width$}", num, width = digits));
     }
 
     parts.join(options.separator)
