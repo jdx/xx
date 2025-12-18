@@ -42,7 +42,7 @@ impl Default for HaikuOptions<'_> {
 /// unique identifiers with memorable, human-readable names.
 ///
 /// The word pattern is:
-/// - 1 word: adjective
+/// - 1 word: noun
 /// - 2 words: adjective-noun
 /// - 3 words: adverb-adjective-noun
 /// - 4+ words: adverb-adjective-noun-noun...
@@ -77,14 +77,14 @@ pub fn haiku(options: &HaikuOptions) -> String {
     let words = options.words.max(1);
     let mut parts: Vec<String> = Vec::with_capacity(words + 1);
 
-    // Fixed pattern: [adverb]-adjective-noun[-noun...]
-    // 1 word: adjective
+    // Fixed pattern: [adverb]-[adjective]-noun[-noun...]
+    // 1 word: noun
     // 2 words: adjective-noun
     // 3 words: adverb-adjective-noun
     // 4+ words: adverb-adjective-noun-noun...
     for i in 0..words {
         let word = match (words, i) {
-            (1, 0) => *ADJECTIVES.choose(&mut rng).unwrap(),
+            (1, 0) => *NOUNS.choose(&mut rng).unwrap(),
             (2, 0) => *ADJECTIVES.choose(&mut rng).unwrap(),
             (2, 1) => *NOUNS.choose(&mut rng).unwrap(),
             (_, 0) => *ADVERBS.choose(&mut rng).unwrap(),
