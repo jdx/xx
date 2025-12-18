@@ -45,7 +45,8 @@ impl Default for HaikuOptions<'_> {
 /// - 1 word: noun
 /// - 2 words: adjective-noun
 /// - 3 words: adverb-adjective-noun
-/// - 4+ words: adverb-adjective-noun-noun...
+/// - 4 words: adverb-adjective-noun-adjective
+/// - 5+ words: adverb-adjective-noun-adjective-noun...
 ///
 /// # Examples
 ///
@@ -77,11 +78,12 @@ pub fn haiku(options: &HaikuOptions) -> String {
     let words = options.words.max(1);
     let mut parts: Vec<String> = Vec::with_capacity(words + 1);
 
-    // Fixed pattern: [adverb]-[adjective]-noun[-noun...]
+    // Fixed pattern:
     // 1 word: noun
     // 2 words: adjective-noun
     // 3 words: adverb-adjective-noun
-    // 4+ words: adverb-adjective-noun-noun...
+    // 4 words: adverb-adjective-noun-adjective
+    // 5+ words: adverb-adjective-noun-adjective-noun...
     for i in 0..words {
         let word = match (words, i) {
             (1, 0) => *NOUNS.choose(&mut rng).unwrap(),
@@ -89,6 +91,8 @@ pub fn haiku(options: &HaikuOptions) -> String {
             (2, 1) => *NOUNS.choose(&mut rng).unwrap(),
             (_, 0) => *ADVERBS.choose(&mut rng).unwrap(),
             (_, 1) => *ADJECTIVES.choose(&mut rng).unwrap(),
+            (_, 2) => *NOUNS.choose(&mut rng).unwrap(),
+            (_, i) if i % 2 == 1 => *ADJECTIVES.choose(&mut rng).unwrap(),
             (_, _) => *NOUNS.choose(&mut rng).unwrap(),
         };
         parts.push(word.to_string());
