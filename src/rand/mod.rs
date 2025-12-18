@@ -3,28 +3,15 @@
 //! This module provides utilities for generating random values,
 //! including human-readable random names.
 
+use std::sync::LazyLock;
+
 use rand::prelude::*;
 
 // Word lists inspired by https://github.com/nishanths/rust-haikunator
-const ADJECTIVES: &[&str] = &[
-    "aged", "ancient", "autumn", "billowing", "bitter", "black", "blue", "bold", "broken", "calm",
-    "cold", "cool", "crimson", "damp", "dark", "dawn", "delicate", "divine", "dry", "empty",
-    "falling", "floral", "fragrant", "frosty", "gentle", "green", "hidden", "holy", "icy", "late",
-    "lingering", "little", "lively", "long", "misty", "morning", "muddy", "nameless", "old",
-    "patient", "polished", "proud", "purple", "quiet", "rapid", "red", "restless", "rough", "shy",
-    "silent", "small", "snowy", "solitary", "sparkling", "spring", "still", "summer", "twilight",
-    "wandering", "weathered", "white", "wild", "winter", "wispy", "withered", "young",
-];
-
-const NOUNS: &[&str] = &[
-    "bird", "breeze", "brook", "bush", "butterfly", "cherry", "cloud", "darkness", "dawn", "dew",
-    "dream", "dust", "feather", "field", "fire", "firefly", "flower", "fog", "forest", "frog",
-    "frost", "glade", "glitter", "grass", "haze", "hill", "lake", "leaf", "meadow", "moon",
-    "morning", "mountain", "night", "paper", "pine", "pond", "rain", "resonance", "river", "sea",
-    "shadow", "shape", "silence", "sky", "smoke", "snow", "snowflake", "sound", "star", "sun",
-    "sunset", "surf", "thunder", "tree", "violet", "voice", "water", "waterfall", "wave",
-    "wildflower", "wind", "wood",
-];
+static ADJECTIVES: LazyLock<Vec<&'static str>> =
+    LazyLock::new(|| include_str!("adjectives.txt").lines().collect());
+static NOUNS: LazyLock<Vec<&'static str>> =
+    LazyLock::new(|| include_str!("nouns.txt").lines().collect());
 
 /// Options for generating haiku-style random names
 #[derive(Debug, Clone)]
