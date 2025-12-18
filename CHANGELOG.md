@@ -16,6 +16,32 @@
 
 - Pin homedir to 0.3.5 for MSRV compatibility
 - Cargo build
+## [2.2.0](https://github.com/jdx/xx/compare/v2.1.2...v2.2.0) (2025-12-18)
+
+
+### Features
+
+* add haiku random name generator ([#146](https://github.com/jdx/xx/issues/146)) ([ad572ad](https://github.com/jdx/xx/commit/ad572ad5a8b398560c2b95647445743a30d02c27))
+* set MSRV to 1.85 with GitHub Actions verification ([#109](https://github.com/jdx/xx/issues/109)) ([72894ac](https://github.com/jdx/xx/commit/72894ac2d4ae7df2473a6897ba0670aa03f99c8b))
+
+
+### Bug Fixes
+
+* cross-platform doc tests for file and hash operations ([#107](https://github.com/jdx/xx/issues/107)) ([1997e4e](https://github.com/jdx/xx/commit/1997e4e96061f67044c5556ce12b22d6d31591ae))
+* **deps:** update rust crate bzip2 to 0.6 ([#92](https://github.com/jdx/xx/issues/92)) ([8e0c6e5](https://github.com/jdx/xx/commit/8e0c6e5e469f4c327e21ee8de38ca7f5f591deb7))
+* **deps:** update rust crate flate2 to v1.1.2 ([#90](https://github.com/jdx/xx/issues/90)) ([f6353be](https://github.com/jdx/xx/commit/f6353be5256faa2cb69aaa0c970b30755eef069b))
+* **deps:** update rust crate homedir to v0.3.6 ([#101](https://github.com/jdx/xx/issues/101)) ([4f1e604](https://github.com/jdx/xx/commit/4f1e604bfe5763996c8299f3310cc536cf00bda3))
+* **deps:** update rust crate log to v0.4.28 ([#104](https://github.com/jdx/xx/issues/104)) ([02735ff](https://github.com/jdx/xx/commit/02735ff8a33de6696d801dc6a4f449d132fa96c3))
+* **deps:** update rust crate regex to v1.11.2 ([#106](https://github.com/jdx/xx/issues/106)) ([f5ea05e](https://github.com/jdx/xx/commit/f5ea05edb5bfff899d63491fbe346ea2be3fc60c))
+* **deps:** update rust crate reqwest to v0.12.23 ([#88](https://github.com/jdx/xx/issues/88)) ([be565e8](https://github.com/jdx/xx/commit/be565e8a18d99014176ef0ae3bd93a7d244980ee))
+* **deps:** update rust crate thiserror to v2.0.16 ([#100](https://github.com/jdx/xx/issues/100)) ([2b84e66](https://github.com/jdx/xx/commit/2b84e6663590c834f6c5da1b89c96bb53aa1d7af))
+* **deps:** update rust crate zip to v6 ([#129](https://github.com/jdx/xx/issues/129)) ([fb5ed00](https://github.com/jdx/xx/commit/fb5ed00849f8a45f67735d0789da427a3b1775c8))
+* disable reqwest default features to avoid native-tls ([11c9ecc](https://github.com/jdx/xx/commit/11c9eccd89790f46d16a6417db4c63f0939dafb7))
+* downgrade homedir to 0.3.5 for MSRV compatibility ([f960ca7](https://github.com/jdx/xx/commit/f960ca7341b3acd08400fbdbd8d94e818d0ebec8))
+* mark HTTP doctests as no_run to prevent network requests ([#119](https://github.com/jdx/xx/issues/119)) ([424c5a9](https://github.com/jdx/xx/commit/424c5a9c8e03ac6579dc61fac58d246572968c29))
+* remove incorrect patch entry ([3cf78a0](https://github.com/jdx/xx/commit/3cf78a0fa0cb3edfe1d858e812703c7404f21b66))
+* use cargo-msrv command directly instead of cargo subcommand ([#111](https://github.com/jdx/xx/issues/111)) ([5cd9419](https://github.com/jdx/xx/commit/5cd9419e1af618debe9db34d5947d83b1627c502))
+
 ## [2.1.1] - 2025-05-15
 
 ### ⚙️ Miscellaneous Tasks
