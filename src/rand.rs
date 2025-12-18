@@ -1,0 +1,161 @@
+//! Random generation utilities
+//!
+//! This module provides utilities for generating random values,
+//! including human-readable random names.
+
+use rand::prelude::*;
+
+// Word lists inspired by https://github.com/nishanths/rust-haikunator
+const ADJECTIVES: &[&str] = &[
+    "aged", "ancient", "autumn", "billowing", "bitter", "black", "blue", "bold", "broken", "calm",
+    "cold", "cool", "crimson", "damp", "dark", "dawn", "delicate", "divine", "dry", "empty",
+    "falling", "floral", "fragrant", "frosty", "gentle", "green", "hidden", "holy", "icy", "late",
+    "lingering", "little", "lively", "long", "misty", "morning", "muddy", "nameless", "old",
+    "patient", "polished", "proud", "purple", "quiet", "rapid", "red", "restless", "rough", "shy",
+    "silent", "small", "snowy", "solitary", "sparkling", "spring", "still", "summer", "twilight",
+    "wandering", "weathered", "white", "wild", "winter", "wispy", "withered", "young",
+];
+
+const NOUNS: &[&str] = &[
+    "bird", "breeze", "brook", "bush", "butterfly", "cherry", "cloud", "darkness", "dawn", "dew",
+    "dream", "dust", "feather", "field", "fire", "firefly", "flower", "fog", "forest", "frog",
+    "frost", "glade", "glitter", "grass", "haze", "hill", "lake", "leaf", "meadow", "moon",
+    "morning", "mountain", "night", "paper", "pine", "pond", "rain", "resonance", "river", "sea",
+    "shadow", "shape", "silence", "sky", "smoke", "snow", "snowflake", "sound", "star", "sun",
+    "sunset", "surf", "thunder", "tree", "violet", "voice", "water", "waterfall", "wave",
+    "wildflower", "wind", "wood",
+];
+
+/// Options for generating haiku-style random names
+#[derive(Debug, Clone)]
+pub struct HaikuOptions<'a> {
+    /// Number of words to include (default: 2)
+    pub words: usize,
+    /// Separator between words (default: "-")
+    pub separator: &'a str,
+    /// Number of digits to append, or 0 for none (default: 2)
+    pub digits: usize,
+}
+
+impl Default for HaikuOptions<'_> {
+    fn default() -> Self {
+        Self {
+            words: 2,
+            separator: "-",
+            digits: 2,
+        }
+    }
+}
+
+/// Generate a haiku-style random name
+///
+/// Generates a poetic-themed random name by combining adjectives and nouns,
+/// optionally followed by a random number. Useful for generating unique
+/// identifiers with memorable, human-readable names.
+///
+/// # Examples
+///
+/// ```
+/// use xx::rand::{haiku, HaikuOptions};
+///
+/// // Default: 2 words + 2-digit number
+/// let name = haiku(&HaikuOptions::default());
+/// // e.g., "silent-forest-42"
+///
+/// // Custom: 3 words, no number
+/// let name = haiku(&HaikuOptions {
+///     words: 3,
+///     digits: 0,
+///     ..Default::default()
+/// });
+/// // e.g., "ancient-moon-wild"
+///
+/// // Custom separator and more digits
+/// let name = haiku(&HaikuOptions {
+///     separator: "_",
+///     digits: 4,
+///     ..Default::default()
+/// });
+/// // e.g., "misty_dawn_8472"
+/// ```
+pub fn haiku(options: &HaikuOptions) -> String {
+    let mut rng = rand::rng();
+    let words = options.words.max(1);
+    let mut parts: Vec<String> = Vec::with_capacity(words + 1);
+
+    // Alternate between adjectives and nouns
+    for i in 0..words {
+        let word = if i % 2 == 0 {
+            *ADJECTIVES.choose(&mut rng).unwrap()
+        } else {
+            *NOUNS.choose(&mut rng).unwrap()
+        };
+        parts.push(word.to_string());
+    }
+
+    if options.digits > 0 {
+        let max = 10_u32.pow(options.digits as u32);
+        let num: u32 = rng.random_range(0..max);
+        parts.push(format!("{:0width$}", num, width = options.digits));
+    }
+
+    parts.join(options.separator)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_haiku_default() {
+        let name = haiku(&HaikuOptions::default());
+        let parts: Vec<&str> = name.split('-').collect();
+        assert_eq!(parts.len(), 3);
+        assert!(!parts[0].is_empty());
+        assert!(!parts[1].is_empty());
+        assert_eq!(parts[2].len(), 2); // 2 digits
+        assert!(parts[2].parse::<u32>().is_ok());
+    }
+
+    #[test]
+    fn test_haiku_no_number() {
+        let name = haiku(&HaikuOptions {
+            digits: 0,
+            ..Default::default()
+        });
+        let parts: Vec<&str> = name.split('-').collect();
+        assert_eq!(parts.len(), 2);
+        assert!(parts.iter().all(|p| p.parse::<u32>().is_err()));
+    }
+
+    #[test]
+    fn test_haiku_custom_separator() {
+        let name = haiku(&HaikuOptions {
+            separator: "_",
+            ..Default::default()
+        });
+        assert!(name.contains('_'));
+        assert!(!name.contains('-'));
+    }
+
+    #[test]
+    fn test_haiku_three_words() {
+        let name = haiku(&HaikuOptions {
+            words: 3,
+            digits: 0,
+            ..Default::default()
+        });
+        let parts: Vec<&str> = name.split('-').collect();
+        assert_eq!(parts.len(), 3);
+    }
+
+    #[test]
+    fn test_haiku_four_digits() {
+        let name = haiku(&HaikuOptions {
+            digits: 4,
+            ..Default::default()
+        });
+        let parts: Vec<&str> = name.split('-').collect();
+        assert_eq!(parts[2].len(), 4);
+    }
+}
