@@ -24,7 +24,7 @@ homedir = "0.3"
 log = "0.4"
 miette = "7"
 regex = "1"
-reqwest = { version = "0.12", optional = true, default-features = false }
+reqwest = { version = "0.13", optional = true, default-features = false }
 sha2 = { version = "0.10", optional = true }
 tar = { version = "0.4", optional = true }
 thiserror = "2"
