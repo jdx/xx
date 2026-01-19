@@ -113,7 +113,7 @@ impl Git {
             "--prune",
             "--update-head-ok",
             "origin",
-            &format!("{gitref}:{gitref}"),
+            &format!("+{gitref}:{gitref}"),
         ))?;
         let prev_rev = self.current_sha()?;
         exec(git_cmd!(

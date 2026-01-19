@@ -44,8 +44,8 @@ glob = ["globwalk"]
 hash = ["sha2"]
 http = ["reqwest", "tokio", "reqwest/gzip", "reqwest/json"]
 native-tls = ["reqwest/native-tls", "reqwest/default-tls"]
-rustls = ["reqwest/rustls-tls"]
-rustls-native-roots = ["reqwest/rustls-tls-native-roots"]
+rustls = ["reqwest/rustls"]
+rustls-native-roots = ["reqwest/rustls"]
 
 [dev-dependencies]
 env_logger = "0.11"
