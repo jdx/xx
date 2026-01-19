@@ -17,6 +17,7 @@ jobs:
         id: release
         with:
           release-type: rust
+          token: ${{ secrets.RELEASE_PLEASE_TOKEN }}
       - uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6
         if: ${{ steps.release.outputs.release_created }}
       - uses: dtolnay/rust-toolchain@stable
