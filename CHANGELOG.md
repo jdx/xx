@@ -16,6 +16,16 @@
 
 - Pin homedir to 0.3.5 for MSRV compatibility
 - Cargo build
+## [2.3.1](https://github.com/jdx/xx/compare/v2.3.0...v2.3.1) (2026-01-19)
+
+
+### Bug Fixes
+
+* allow non-fast-forward updates in git fetch ([#163](https://github.com/jdx/xx/issues/163)) ([e3abcd6](https://github.com/jdx/xx/commit/e3abcd6e9eb17b621078ee4bfe1f8f4d41d4f2d2))
+* **deps:** update rust crate reqwest to 0.13 ([#158](https://github.com/jdx/xx/issues/158)) ([878ca01](https://github.com/jdx/xx/commit/878ca016638ae16f3b1b07541b64910eb0cc89c7))
+* **deps:** update rust crate zip to v7 ([#162](https://github.com/jdx/xx/issues/162)) ([b327786](https://github.com/jdx/xx/commit/b3277865b062461a39e5ff3e998bd6e44cd7d232))
+* use PAT for release-please to trigger CI on PRs ([#164](https://github.com/jdx/xx/issues/164)) ([9a4c678](https://github.com/jdx/xx/commit/9a4c678e3f97eebec8376f9d188a7269309c34b4))
+
 ## [2.3.0](https://github.com/jdx/xx/compare/v2.2.0...v2.3.0) (2025-12-18)
 
 
