@@ -285,6 +285,172 @@ mod tests {
 
         file::remove_dir_all("/tmp/xx").unwrap();
     }
+
+    // ========================================================================
+    // Error case tests
+    // ========================================================================
+
+    #[test]
+    fn test_clone_invalid_url() {
+        let tmp = tempfile::tempdir().unwrap();
+        let result = clone(
+            "https://github.com/nonexistent-user-12345/nonexistent-repo-67890",
+            tmp.path(),
+            &CloneOptions::default(),
+        );
+        // Should fail because the repo doesn't exist
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_clone_invalid_branch() {
+        let tmp = tempfile::tempdir().unwrap();
+        let clone_options = CloneOptions::default().branch("nonexistent-branch-12345");
+        let result = clone("https://github.com/jdx/xx", tmp.path(), &clone_options);
+        // Should fail because the branch doesn't exist
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_current_branch_not_a_repo() {
+        let tmp = tempfile::tempdir().unwrap();
+        let git = Git::new(tmp.path().to_path_buf());
+        // Should fail because it's not a git repo
+        let result = git.current_branch();
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_current_sha_not_a_repo() {
+        let tmp = tempfile::tempdir().unwrap();
+        let git = Git::new(tmp.path().to_path_buf());
+        // Should fail because it's not a git repo
+        let result = git.current_sha();
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_current_sha_short_not_a_repo() {
+        let tmp = tempfile::tempdir().unwrap();
+        let git = Git::new(tmp.path().to_path_buf());
+        // Should fail because it's not a git repo
+        let result = git.current_sha_short();
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_current_abbrev_ref_not_a_repo() {
+        let tmp = tempfile::tempdir().unwrap();
+        let git = Git::new(tmp.path().to_path_buf());
+        // Should fail because it's not a git repo
+        let result = git.current_abbrev_ref();
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_get_remote_url_not_a_repo() {
+        let tmp = tempfile::tempdir().unwrap();
+        let git = Git::new(tmp.path().to_path_buf());
+        // Should return None because it's not a git repo
+        assert_eq!(git.get_remote_url(), None);
+    }
+
+    #[test]
+    fn test_get_remote_url_nonexistent_dir() {
+        let git = Git::new(PathBuf::from("/nonexistent/path/12345"));
+        // Should return None because the directory doesn't exist
+        assert_eq!(git.get_remote_url(), None);
+    }
+
+    // ========================================================================
+    // Utility function tests
+    // ========================================================================
+
+    #[test]
+    fn test_split_url_and_ref_with_ref() {
+        let (url, gitref) = Git::split_url_and_ref("https://github.com/user/repo#v1.0.0");
+        assert_eq!(url, "https://github.com/user/repo");
+        assert_eq!(gitref, Some("v1.0.0".to_string()));
+    }
+
+    #[test]
+    fn test_split_url_and_ref_without_ref() {
+        let (url, gitref) = Git::split_url_and_ref("https://github.com/user/repo");
+        assert_eq!(url, "https://github.com/user/repo");
+        assert_eq!(gitref, None);
+    }
+
+    #[test]
+    fn test_split_url_and_ref_with_branch_name() {
+        let (url, gitref) = Git::split_url_and_ref("https://github.com/user/repo#feature/branch");
+        assert_eq!(url, "https://github.com/user/repo");
+        assert_eq!(gitref, Some("feature/branch".to_string()));
+    }
+
+    #[test]
+    fn test_is_repo_true() {
+        let tmp = tempfile::tempdir().unwrap();
+        // Clone a repo first
+        let git = clone(
+            "https://github.com/jdx/xx",
+            tmp.path(),
+            &CloneOptions::default(),
+        )
+        .unwrap();
+        assert!(git.is_repo());
+    }
+
+    #[test]
+    fn test_is_repo_false() {
+        let tmp = tempfile::tempdir().unwrap();
+        let git = Git::new(tmp.path().to_path_buf());
+        assert!(!git.is_repo());
+    }
+
+    #[test]
+    fn test_is_repo_nonexistent() {
+        let git = Git::new(PathBuf::from("/nonexistent/path/12345"));
+        assert!(!git.is_repo());
+    }
+
+    // ========================================================================
+    // Update tests
+    // ========================================================================
+
+    #[test]
+    fn test_update() {
+        let tmp = tempfile::tempdir().unwrap();
+
+        // Clone the repo
+        let git = clone(
+            "https://github.com/jdx/xx",
+            tmp.path(),
+            &CloneOptions::default(),
+        )
+        .unwrap();
+
+        // Get initial state
+        let initial_sha = git.current_sha().unwrap();
+
+        // Update should succeed (even if no changes)
+        let result = git.update(None);
+        assert!(result.is_ok());
+
+        let (prev_rev, post_rev) = result.unwrap();
+        assert!(!prev_rev.is_empty());
+        assert!(!post_rev.is_empty());
+        // SHA should be the same if no upstream changes
+        assert_eq!(prev_rev, initial_sha);
+    }
+
+    #[test]
+    fn test_clone_options_builder() {
+        let options = CloneOptions::default();
+        assert!(options.branch.is_none());
+
+        let options = CloneOptions::default().branch("main");
+        assert_eq!(options.branch, Some("main".to_string()));
+    }
 }
 
 #[derive(Default)]
