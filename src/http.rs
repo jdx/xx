@@ -53,6 +53,9 @@ pub struct XXHTTPResponse {
     pub body: String,
 }
 
+/// Maximum retry delay cap (10 seconds)
+pub const MAX_RETRY_DELAY: Duration = Duration::from_secs(10);
+
 /// HTTP client with configurable options
 pub struct Client {
     timeout: Duration,
@@ -90,7 +93,7 @@ impl Client {
         self
     }
 
-    /// Set the delay between retries
+    /// Set the base delay between retries (uses exponential backoff)
     pub fn retry_delay(mut self, delay: Duration) -> Self {
         self.retry_delay = delay;
         self
@@ -105,14 +108,76 @@ impl Client {
     /// Perform a GET request
     pub async fn get(&self, url: impl IntoUrl) -> XXResult<XXHTTPResponse> {
         let url = url.into_url().map_err(|err| error!("url error: {}", err))?;
-
         let client = self.build_client()?;
+        let url_str = url.to_string();
+
+        let resp = self
+            .request_with_retry(&client, &url, |resp| {
+                let url_str = url_str.clone();
+                async move {
+                    Ok(XXHTTPResponse {
+                        status: resp.status(),
+                        headers: resp.headers().clone(),
+                        body: resp
+                            .text()
+                            .await
+                            .map_err(|err| XXError::HTTPError(err, url_str))?,
+                    })
+                }
+            })
+            .await?;
+
+        Ok(resp)
+    }
+
+    /// Perform a GET request and return bytes
+    pub async fn get_bytes(&self, url: impl IntoUrl) -> XXResult<Vec<u8>> {
+        let url = url.into_url().map_err(|err| error!("url error: {}", err))?;
+        let client = self.build_client()?;
+        let url_str = url.to_string();
+
+        self.request_with_retry(&client, &url, |resp| {
+            let url_str = url_str.clone();
+            async move {
+                resp.bytes()
+                    .await
+                    .map(|b| b.to_vec())
+                    .map_err(|err| XXError::HTTPError(err, url_str))
+            }
+        })
+        .await
+    }
+
+    /// Download a file
+    pub async fn download(&self, url: impl IntoUrl, to: impl AsRef<Path>) -> XXResult<()> {
+        let to = to.as_ref();
+        let bytes = self.get_bytes(url).await?;
+
+        file::mkdirp(to.parent().unwrap())?;
+        file::write(to, &bytes)?;
+        Ok(())
+    }
+
+    /// Internal helper for request with retry logic using exponential backoff
+    async fn request_with_retry<T, F, Fut>(
+        &self,
+        client: &reqwest::Client,
+        url: &reqwest::Url,
+        process_response: F,
+    ) -> XXResult<T>
+    where
+        F: Fn(reqwest::Response) -> Fut,
+        Fut: std::future::Future<Output = XXResult<T>>,
+    {
         let mut last_error = None;
 
         for attempt in 0..=self.retries {
             if attempt > 0 {
-                trace!("Retry attempt {} for {}", attempt, url);
-                tokio::time::sleep(self.retry_delay * attempt).await;
+                // Exponential backoff: base_delay * 2^(attempt-1), capped at MAX_RETRY_DELAY
+                let delay = self.retry_delay * 2_u32.pow(attempt - 1);
+                let delay = delay.min(MAX_RETRY_DELAY);
+                trace!("Retry attempt {} for {} (delay: {:?})", attempt, url, delay);
+                tokio::time::sleep(delay).await;
             }
 
             match client.get(url.clone()).send().await {
@@ -126,17 +191,10 @@ impl Client {
                     resp.error_for_status_ref()
                         .map_err(|err| XXError::HTTPError(err, url.to_string()))?;
 
-                    return Ok(XXHTTPResponse {
-                        status: resp.status(),
-                        headers: resp.headers().clone(),
-                        body: resp
-                            .text()
-                            .await
-                            .map_err(|err| XXError::HTTPError(err, url.to_string()))?,
-                    });
+                    return process_response(resp).await;
                 }
                 Err(err) => {
-                    if err.is_timeout() || err.is_connect() {
+                    if (err.is_timeout() || err.is_connect()) && attempt < self.retries {
                         // Transient error, retry
                         last_error = Some(XXError::HTTPError(err, url.to_string()));
                         continue;
@@ -147,58 +205,6 @@ impl Client {
         }
 
         Err(last_error.unwrap_or_else(|| error!("Request failed after {} retries", self.retries)))
-    }
-
-    /// Perform a GET request and return bytes
-    pub async fn get_bytes(&self, url: impl IntoUrl) -> XXResult<Vec<u8>> {
-        let url = url.into_url().map_err(|err| error!("url error: {}", err))?;
-
-        let client = self.build_client()?;
-        let mut last_error = None;
-
-        for attempt in 0..=self.retries {
-            if attempt > 0 {
-                trace!("Retry attempt {} for {}", attempt, url);
-                tokio::time::sleep(self.retry_delay * attempt).await;
-            }
-
-            match client.get(url.clone()).send().await {
-                Ok(resp) => {
-                    if resp.status().is_server_error() && attempt < self.retries {
-                        last_error = Some(error!("Server error: {}", resp.status()));
-                        continue;
-                    }
-
-                    resp.error_for_status_ref()
-                        .map_err(|err| XXError::HTTPError(err, url.to_string()))?;
-
-                    return resp
-                        .bytes()
-                        .await
-                        .map(|b| b.to_vec())
-                        .map_err(|err| XXError::HTTPError(err, url.to_string()));
-                }
-                Err(err) => {
-                    if err.is_timeout() || err.is_connect() {
-                        last_error = Some(XXError::HTTPError(err, url.to_string()));
-                        continue;
-                    }
-                    return Err(XXError::HTTPError(err, url.to_string()));
-                }
-            }
-        }
-
-        Err(last_error.unwrap_or_else(|| error!("Request failed after {} retries", self.retries)))
-    }
-
-    /// Download a file
-    pub async fn download(&self, url: impl IntoUrl, to: impl AsRef<Path>) -> XXResult<()> {
-        let to = to.as_ref();
-        let bytes = self.get_bytes(url).await?;
-
-        file::mkdirp(to.parent().unwrap())?;
-        file::write(to, &bytes)?;
-        Ok(())
     }
 
     fn build_client(&self) -> XXResult<reqwest::Client> {

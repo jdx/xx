@@ -786,37 +786,31 @@ pub fn display_rel_path<P: AsRef<Path>>(path: P) -> String {
 /// # Example
 /// ```
 /// use xx::file;
-/// assert_eq!(file::split_file_name("foo.tar.gz"), ("foo.tar", Some(".gz")));
-/// assert_eq!(file::split_file_name("foo"), ("foo", None));
-/// assert_eq!(file::split_file_name(".hidden"), (".hidden", None));
+/// assert_eq!(file::split_file_name("foo.tar.gz"), ("foo.tar".to_string(), Some(".gz".to_string())));
+/// assert_eq!(file::split_file_name("foo"), ("foo".to_string(), None));
+/// assert_eq!(file::split_file_name(".hidden"), (".hidden".to_string(), None));
 /// ```
-pub fn split_file_name<P: AsRef<Path>>(path: P) -> (&'static str, Option<&'static str>) {
+pub fn split_file_name<P: AsRef<Path>>(path: P) -> (String, Option<String>) {
     let path = path.as_ref();
     let name = path
         .file_name()
         .and_then(|n| n.to_str())
         .unwrap_or_default();
 
-    // Leak the string to get a static lifetime - this is acceptable for display purposes
-    let name: &'static str = Box::leak(name.to_string().into_boxed_str());
-
     // Handle hidden files and files without extension
     if name.starts_with('.') && !name[1..].contains('.') {
-        return (name, None);
+        return (name.to_string(), None);
     }
 
     if let Some(dot_pos) = name.rfind('.') {
         if dot_pos == 0 {
-            (name, None)
+            (name.to_string(), None)
         } else {
             let (stem, ext) = name.split_at(dot_pos);
-            (
-                Box::leak(stem.to_string().into_boxed_str()),
-                Some(Box::leak(ext.to_string().into_boxed_str())),
-            )
+            (stem.to_string(), Some(ext.to_string()))
         }
     } else {
-        (name, None)
+        (name.to_string(), None)
     }
 }
 

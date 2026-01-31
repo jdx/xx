@@ -152,32 +152,13 @@ impl CacheManager {
         let content = file::read_to_string(&path).ok()?;
         let entry: CacheEntry<T> = serde_json::from_str(&content).ok()?;
 
-        // Check version
-        if entry.version != self.version {
-            trace!("Cache miss (version mismatch): {}", key);
+        if !self.is_entry_fresh(
+            key,
+            entry.created_at,
+            &entry.version,
+            entry.files_hash.as_deref(),
+        ) {
             return None;
-        }
-
-        // Check freshness duration
-        if let Some(duration) = self.fresh_duration {
-            let now = SystemTime::now()
-                .duration_since(SystemTime::UNIX_EPOCH)
-                .unwrap_or_default()
-                .as_secs();
-
-            if now - entry.created_at >= duration.as_secs() {
-                trace!("Cache miss (expired): {}", key);
-                return None;
-            }
-        }
-
-        // Check watched files
-        if let Some(files_hash) = &entry.files_hash {
-            let current_hash = self.compute_files_hash();
-            if current_hash.as_ref() != Some(files_hash) {
-                trace!("Cache miss (files changed): {}", key);
-                return None;
-            }
         }
 
         trace!("Cache hit: {}", key);
@@ -238,7 +219,6 @@ impl CacheManager {
 
     /// Check if a key exists and is fresh
     pub fn contains(&self, key: &str) -> bool {
-        // We need to check freshness, so we attempt to get as a generic Value
         let path = self.cache_path(key);
         if !path.exists() {
             return false;
@@ -247,32 +227,12 @@ impl CacheManager {
         // Read and check metadata without deserializing the data
         if let Ok(content) = file::read_to_string(&path) {
             if let Ok(entry) = serde_json::from_str::<CacheEntry<serde_json::Value>>(&content) {
-                // Check version
-                if entry.version != self.version {
-                    return false;
-                }
-
-                // Check freshness duration
-                if let Some(duration) = self.fresh_duration {
-                    let now = SystemTime::now()
-                        .duration_since(SystemTime::UNIX_EPOCH)
-                        .unwrap_or_default()
-                        .as_secs();
-
-                    if now - entry.created_at >= duration.as_secs() {
-                        return false;
-                    }
-                }
-
-                // Check watched files
-                if let Some(files_hash) = &entry.files_hash {
-                    let current_hash = self.compute_files_hash();
-                    if current_hash.as_ref() != Some(files_hash) {
-                        return false;
-                    }
-                }
-
-                return true;
+                return self.is_entry_fresh(
+                    key,
+                    entry.created_at,
+                    &entry.version,
+                    entry.files_hash.as_deref(),
+                );
             }
         }
 
@@ -285,22 +245,64 @@ impl CacheManager {
         self.cache_dir.join(format!("{}.json", hash))
     }
 
+    /// Check if a cache entry is still fresh
+    fn is_entry_fresh(
+        &self,
+        key: &str,
+        created_at: u64,
+        version: &str,
+        files_hash: Option<&str>,
+    ) -> bool {
+        // Check version
+        if version != self.version {
+            trace!("Cache miss (version mismatch): {}", key);
+            return false;
+        }
+
+        // Check freshness duration
+        if let Some(duration) = self.fresh_duration {
+            let now = SystemTime::now()
+                .duration_since(SystemTime::UNIX_EPOCH)
+                .unwrap_or_default()
+                .as_secs();
+
+            if now - created_at >= duration.as_secs() {
+                trace!("Cache miss (expired): {}", key);
+                return false;
+            }
+        }
+
+        // Check watched files
+        if let Some(stored_hash) = files_hash {
+            let current_hash = self.compute_files_hash();
+            if current_hash.as_deref() != Some(stored_hash) {
+                trace!("Cache miss (files changed): {}", key);
+                return false;
+            }
+        }
+
+        true
+    }
+
     /// Compute a hash of the watched files' modification times
+    ///
+    /// Returns a hash that includes information about all watched files.
+    /// If a file doesn't exist or can't be accessed, we include a marker
+    /// for that in the hash so that deletion or creation of files also
+    /// invalidates the cache.
     fn compute_files_hash(&self) -> Option<String> {
         if self.fresh_files.is_empty() {
             return None;
         }
 
-        let mut mtimes: Vec<u64> = Vec::new();
-        for path in &self.fresh_files {
-            if let Ok(mtime) = file::modified_time(path) {
-                mtimes.push(mtime.as_secs());
-            }
-        }
-
-        if mtimes.is_empty() {
-            return None;
-        }
+        // Include file existence/modification state for each watched file
+        // Using Option<u64> so that missing files are represented as None
+        // and affect the hash differently than existing files
+        let mtimes: Vec<Option<u64>> = self
+            .fresh_files
+            .iter()
+            .map(|path| file::modified_time(path).ok().map(|m| m.as_secs()))
+            .collect();
 
         Some(hash_to_str(&mtimes))
     }

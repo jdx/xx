@@ -146,10 +146,8 @@ impl XXExpression {
                 .stderr(Stdio::piped());
 
             // Handle stdin
-            if let Some(stdin_data) = &self.stdin_data {
+            if self.stdin_data.is_some() {
                 cmd.stdin(Stdio::piped());
-                // We'll write stdin data after spawning
-                let _ = stdin_data; // suppress unused warning, handled below
             } else {
                 cmd.stdin(Stdio::inherit());
             }
