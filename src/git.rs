@@ -1849,6 +1849,15 @@ mod tests {
         assert_eq!(git.get_remote_url(), None);
     }
 
+    #[test]
+    fn test_add_nonexistent_file() {
+        let tmp = tempfile::tempdir().unwrap();
+        let git = init(tmp.path()).unwrap();
+        // Should fail because the file doesn't exist
+        let result = git.add(&["nonexistent_file.txt"]);
+        assert!(result.is_err());
+    }
+
     // ========================================================================
     // Utility function tests
     // ========================================================================
