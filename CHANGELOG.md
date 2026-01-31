@@ -16,6 +16,15 @@
 
 - Pin homedir to 0.3.5 for MSRV compatibility
 - Cargo build
+## [2.5.0](https://github.com/jdx/xx/compare/v2.4.0...v2.5.0) (2026-01-31)
+
+
+### Features
+
+* add archive creation support (tar.gz, tar.bz2, tar.xz, zip, gz) ([#174](https://github.com/jdx/xx/issues/174)) ([5bcaf38](https://github.com/jdx/xx/commit/5bcaf38989ebe9f9e8117befd9715b4d615c2658))
+* expand git module with comprehensive operations ([#172](https://github.com/jdx/xx/issues/172)) ([a636d92](https://github.com/jdx/xx/commit/a636d926ff012ad3e6678b885854a064cf871807))
+* expand HTTP module with POST, PUT, DELETE, headers, auth ([#173](https://github.com/jdx/xx/issues/173)) ([acd35b4](https://github.com/jdx/xx/commit/acd35b4e84a53eb2d7a5b3b697bf3f7d9330dd99))
+
 ## [2.4.0](https://github.com/jdx/xx/compare/v2.3.1...v2.4.0) (2026-01-31)
 
 
