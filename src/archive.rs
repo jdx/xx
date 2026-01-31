@@ -55,6 +55,37 @@ use std::path::Path;
 
 use crate::{XXError, XXResult, file};
 
+/// Trait for compression writers that need explicit finishing
+#[cfg(any(
+    feature = "archive_tar_gzip",
+    feature = "archive_tar_bzip2",
+    feature = "archive_tar_xz"
+))]
+trait FinishableWriter: std::io::Write {
+    fn finish(self) -> std::io::Result<()>;
+}
+
+#[cfg(feature = "archive_tar_gzip")]
+impl<W: std::io::Write> FinishableWriter for flate2::write::GzEncoder<W> {
+    fn finish(self) -> std::io::Result<()> {
+        flate2::write::GzEncoder::finish(self).map(|_| ())
+    }
+}
+
+#[cfg(feature = "archive_tar_bzip2")]
+impl<W: std::io::Write> FinishableWriter for bzip2::write::BzEncoder<W> {
+    fn finish(self) -> std::io::Result<()> {
+        bzip2::write::BzEncoder::finish(self).map(|_| ())
+    }
+}
+
+#[cfg(feature = "archive_tar_xz")]
+impl<W: std::io::Write> FinishableWriter for xz2::write::XzEncoder<W> {
+    fn finish(self) -> std::io::Result<()> {
+        xz2::write::XzEncoder::finish(self).map(|_| ())
+    }
+}
+
 /// Unpack a .tar.gz archive to a destination directory.
 #[cfg(feature = "archive_untar_gzip")]
 pub fn untar_gz(archive: &Path, destination: &Path) -> XXResult<()> {
@@ -252,7 +283,7 @@ pub fn tar_xz_multi(sources: &[&Path], archive: &Path) -> XXResult<()> {
     feature = "archive_tar_bzip2",
     feature = "archive_tar_xz"
 ))]
-fn create_tar_inner<W: std::io::Write>(source: &Path, writer: W, archive: &Path) -> XXResult<()> {
+fn create_tar_inner<W: FinishableWriter>(source: &Path, writer: W, archive: &Path) -> XXResult<()> {
     let mut builder = tar::Builder::new(writer);
 
     if source.is_dir() {
@@ -272,9 +303,16 @@ fn create_tar_inner<W: std::io::Write>(source: &Path, writer: W, archive: &Path)
             .map_err(|err| XXError::ArchiveIOError(err, archive.to_path_buf()))?;
     }
 
-    builder
+    // Finish the tar archive and get the encoder back
+    let encoder = builder
+        .into_inner()
+        .map_err(|err| XXError::ArchiveIOError(err, archive.to_path_buf()))?;
+
+    // Finish the compression encoder to ensure all data is flushed
+    encoder
         .finish()
         .map_err(|err| XXError::ArchiveIOError(err, archive.to_path_buf()))?;
+
     Ok(())
 }
 
@@ -284,7 +322,7 @@ fn create_tar_inner<W: std::io::Write>(source: &Path, writer: W, archive: &Path)
     feature = "archive_tar_bzip2",
     feature = "archive_tar_xz"
 ))]
-fn create_tar_multi_inner<W: std::io::Write>(
+fn create_tar_multi_inner<W: FinishableWriter>(
     sources: &[&Path],
     writer: W,
     archive: &Path,
@@ -306,9 +344,16 @@ fn create_tar_multi_inner<W: std::io::Write>(
         }
     }
 
-    builder
+    // Finish the tar archive and get the encoder back
+    let encoder = builder
+        .into_inner()
+        .map_err(|err| XXError::ArchiveIOError(err, archive.to_path_buf()))?;
+
+    // Finish the compression encoder to ensure all data is flushed
+    encoder
         .finish()
         .map_err(|err| XXError::ArchiveIOError(err, archive.to_path_buf()))?;
+
     Ok(())
 }
 
