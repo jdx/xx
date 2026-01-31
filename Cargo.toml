@@ -29,6 +29,7 @@ regex = "1"
 reqwest = { version = "0.13", optional = true, default-features = false }
 serde = { version = "1", features = ["derive"], optional = true }
 serde_json = { version = "1", optional = true }
+serde_urlencoded = { version = "0.7", optional = true }
 sha1 = { version = "0.10", optional = true }
 sha2 = { version = "0.10", optional = true }
 strsim = "0.11"
@@ -52,7 +53,7 @@ hash = ["sha2"]
 hash_blake3 = ["blake3"]
 hash_md5 = ["md-5"]
 hash_sha1 = ["sha1"]
-http = ["reqwest", "tokio", "reqwest/gzip", "reqwest/json"]
+http = ["reqwest", "tokio", "reqwest/gzip", "reqwest/json", "serde", "serde_json", "serde_urlencoded"]
 native-tls = ["reqwest/native-tls", "reqwest/default-tls"]
 rustls = ["reqwest/rustls"]
 rustls-native-roots = ["reqwest/rustls"]
