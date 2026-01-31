@@ -708,8 +708,15 @@ impl Client {
         } else {
             None
         };
-        self.execute_with_retry(client, method, url, Some(body), content_type, process_response)
-            .await
+        self.execute_with_retry(
+            client,
+            method,
+            url,
+            Some(body),
+            content_type,
+            process_response,
+        )
+        .await
     }
 
     /// Convenience wrapper for form requests
