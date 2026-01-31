@@ -125,13 +125,18 @@ mod regex;
 /// String similarity and suggestion utilities
 pub mod suggest;
 
-/// Archive extraction utilities (requires one of the archive features)
+/// Archive extraction and creation utilities (requires one of the archive features)
 #[cfg(any(
     feature = "archive_untar_gzip",
     feature = "archive_untar_bzip2",
     feature = "archive_untar_xz",
     feature = "archive_unzip",
     feature = "archive_ungz",
+    feature = "archive_tar_gzip",
+    feature = "archive_tar_bzip2",
+    feature = "archive_tar_xz",
+    feature = "archive_zip",
+    feature = "archive_gz",
 ))]
 pub mod archive;
 

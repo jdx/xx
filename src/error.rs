@@ -50,13 +50,18 @@ pub enum XXError {
         feature = "archive_untar_bzip2",
         feature = "archive_untar_xz",
         feature = "archive_unzip",
-        feature = "archive_ungz"
+        feature = "archive_ungz",
+        feature = "archive_tar_gzip",
+        feature = "archive_tar_bzip2",
+        feature = "archive_tar_xz",
+        feature = "archive_zip",
+        feature = "archive_gz"
     ))]
     #[error("{0}\n{1}")]
     #[diagnostic(code(xx::archive), url(docsrs))]
     ArchiveIOError(std::io::Error, PathBuf),
 
-    #[cfg(feature = "archive_unzip")]
+    #[cfg(any(feature = "archive_unzip", feature = "archive_zip"))]
     #[error("{0}\n{1}")]
     #[diagnostic(code(xx::archive), url(docsrs))]
     ArchiveZipError(zip::result::ZipError, PathBuf),
