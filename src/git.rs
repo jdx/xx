@@ -439,8 +439,10 @@ mod tests {
         let (prev_rev, post_rev) = result.unwrap();
         assert!(!prev_rev.is_empty());
         assert!(!post_rev.is_empty());
-        // SHA should be the same if no upstream changes
+        // prev_rev should match what we had before the update
         assert_eq!(prev_rev, initial_sha);
+        // post_rev may differ if upstream changed, but should be a valid SHA
+        assert_eq!(post_rev.len(), 40); // Full SHA length
     }
 
     #[test]
