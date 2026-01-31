@@ -899,29 +899,29 @@ pub fn same_file<P: AsRef<Path>, Q: AsRef<Path>>(path1: P, path2: Q) -> XXResult
     let path1 = path1.as_ref();
     let path2 = path2.as_ref();
 
-    let meta1 = fs::metadata(path1).map_err(|err| XXError::FileError(err, path1.to_path_buf()))?;
-    let meta2 = fs::metadata(path2).map_err(|err| XXError::FileError(err, path2.to_path_buf()))?;
-
     #[cfg(unix)]
     {
+        let meta1 =
+            fs::metadata(path1).map_err(|err| XXError::FileError(err, path1.to_path_buf()))?;
+        let meta2 =
+            fs::metadata(path2).map_err(|err| XXError::FileError(err, path2.to_path_buf()))?;
         use std::os::unix::fs::MetadataExt;
         Ok(meta1.dev() == meta2.dev() && meta1.ino() == meta2.ino())
     }
 
     #[cfg(windows)]
     {
-        // On Windows, we compare file indices
-        // If indices are unavailable (returns None), we can't reliably compare
-        use std::os::windows::fs::MetadataExt;
-        match (
-            meta1.file_index(),
-            meta2.file_index(),
-            meta1.volume_serial_number(),
-            meta2.volume_serial_number(),
-        ) {
-            (Some(idx1), Some(idx2), Some(vol1), Some(vol2)) => Ok(idx1 == idx2 && vol1 == vol2),
-            // If any index is unavailable, fall back to path comparison
-            _ => Ok(path1.as_ref() == path2.as_ref()),
+        // Verify files exist first (consistent with Unix behavior)
+        fs::metadata(path1).map_err(|err| XXError::FileError(err, path1.to_path_buf()))?;
+        fs::metadata(path2).map_err(|err| XXError::FileError(err, path2.to_path_buf()))?;
+
+        // Compare canonical paths since file_index() is unstable.
+        // Note: This won't detect hard links as the same file, only symlinks.
+        match (fs::canonicalize(path1), fs::canonicalize(path2)) {
+            (Ok(c1), Ok(c2)) => Ok(c1 == c2),
+            // Canonicalization can fail for other reasons (permissions, etc.)
+            // Fall back to path comparison if files exist but can't be canonicalized
+            _ => Ok(path1 == path2),
         }
     }
 }
