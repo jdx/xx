@@ -754,7 +754,7 @@ impl Git {
         }
         .map_err(|err| XXError::GitError(err, self.dir.clone()))?;
 
-        parse_diff_stat(&output)
+        Ok(parse_diff_stat(&output))
     }
 
     /// Get diff between staged changes and HEAD
@@ -763,7 +763,7 @@ impl Git {
             .read()
             .map_err(|err| XXError::GitError(err, self.dir.clone()))?;
 
-        parse_diff_stat(&output)
+        Ok(parse_diff_stat(&output))
     }
 
     /// Create a tag
@@ -1125,12 +1125,12 @@ pub enum ResetMode {
 }
 
 /// Parse diff stat output
-fn parse_diff_stat(output: &str) -> XXResult<DiffStat> {
+fn parse_diff_stat(output: &str) -> DiffStat {
     let mut stat = DiffStat::default();
 
     let output = output.trim();
     if output.is_empty() {
-        return Ok(stat);
+        return stat;
     }
 
     // Parse: "X files changed, Y insertions(+), Z deletions(-)"
@@ -1151,7 +1151,7 @@ fn parse_diff_stat(output: &str) -> XXResult<DiffStat> {
         }
     }
 
-    Ok(stat)
+    stat
 }
 
 /// Initialize a new git repository
@@ -1743,17 +1743,17 @@ mod tests {
     #[test]
     fn test_parse_diff_stat() {
         // Test parsing various diff stat formats
-        let stat = parse_diff_stat(" 3 files changed, 10 insertions(+), 5 deletions(-)").unwrap();
+        let stat = parse_diff_stat(" 3 files changed, 10 insertions(+), 5 deletions(-)");
         assert_eq!(stat.files_changed, 3);
         assert_eq!(stat.insertions, 10);
         assert_eq!(stat.deletions, 5);
 
-        let stat = parse_diff_stat(" 1 file changed, 1 insertion(+)").unwrap();
+        let stat = parse_diff_stat(" 1 file changed, 1 insertion(+)");
         assert_eq!(stat.files_changed, 1);
         assert_eq!(stat.insertions, 1);
         assert_eq!(stat.deletions, 0);
 
-        let stat = parse_diff_stat("").unwrap();
+        let stat = parse_diff_stat("");
         assert_eq!(stat.files_changed, 0);
         assert_eq!(stat.insertions, 0);
         assert_eq!(stat.deletions, 0);
