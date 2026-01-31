@@ -427,9 +427,10 @@ fn add_dir_to_zip<W: std::io::Write + std::io::Seek>(
         let archive_path = format!("{}/{}", dir_name, relative);
 
         if file_type.is_dir() {
-            // Add directory entry
+            // Add directory entry with execute permissions
+            let dir_options = options.unix_permissions(0o755);
             zip_writer
-                .add_directory(&format!("{}/", archive_path), options)
+                .add_directory(&format!("{}/", archive_path), dir_options)
                 .map_err(|err| XXError::ArchiveZipError(err, archive.to_path_buf()))?;
 
             // Recurse into subdirectory
