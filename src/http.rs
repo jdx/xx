@@ -162,6 +162,24 @@ impl Client {
     }
 
     /// Add multiple headers at once
+    ///
+    /// # Example
+    ///
+    /// ```rust,no_run
+    /// use xx::http::Client;
+    ///
+    /// #[tokio::main]
+    /// async fn main() {
+    ///     let resp = Client::new()
+    ///         .headers([
+    ///             ("X-First", "value1"),
+    ///             ("X-Second", "value2"),
+    ///         ])
+    ///         .get("https://httpbin.org/get")
+    ///         .await
+    ///         .unwrap();
+    /// }
+    /// ```
     pub fn headers<I, K, V>(mut self, headers: I) -> Self
     where
         I: IntoIterator<Item = (K, V)>,
@@ -569,14 +587,20 @@ impl Client {
         .await
     }
 
-    /// Internal helper for request with retry logic using exponential backoff
-    async fn request_with_retry<T, F, Fut>(
+    /// Internal helper for executing requests with retry logic using exponential backoff
+    ///
+    /// This is the unified retry implementation used by all HTTP methods.
+    async fn execute_with_retry<T, B, F, Fut>(
         &self,
         client: &reqwest::Client,
+        method: reqwest::Method,
         url: &reqwest::Url,
+        body: Option<B>,
+        content_type: Option<&str>,
         process_response: F,
     ) -> XXResult<T>
     where
+        B: Clone + Into<reqwest::Body>,
         F: Fn(reqwest::Response) -> Fut,
         Fut: std::future::Future<Output = XXResult<T>>,
     {
@@ -585,14 +609,13 @@ impl Client {
         for attempt in 0..=self.retries {
             if attempt > 0 {
                 // Exponential backoff: base_delay * 2^(attempt-1), capped at MAX_RETRY_DELAY
-                // Use saturating_pow to prevent overflow with high retry counts
                 let delay = self.retry_delay * 2_u32.saturating_pow(attempt - 1);
                 let delay = delay.min(MAX_RETRY_DELAY);
                 trace!("Retry attempt {} for {} (delay: {:?})", attempt, url, delay);
                 tokio::time::sleep(delay).await;
             }
 
-            let mut request = client.get(url.clone());
+            let mut request = client.request(method.clone(), url.clone());
 
             // Add custom headers
             for (key, value) in &self.headers {
@@ -609,10 +632,19 @@ impl Client {
                 };
             }
 
+            // Add content-type if specified
+            if let Some(ct) = content_type {
+                request = request.header("Content-Type", ct);
+            }
+
+            // Add body if present
+            if let Some(ref b) = body {
+                request = request.body(b.clone());
+            }
+
             match request.send().await {
                 Ok(resp) => {
                     if resp.status().is_server_error() && attempt < self.retries {
-                        // Server error, retry
                         last_error = Some(error!("Server error: {}", resp.status()));
                         continue;
                     }
@@ -624,7 +656,6 @@ impl Client {
                 }
                 Err(err) => {
                     if (err.is_timeout() || err.is_connect()) && attempt < self.retries {
-                        // Transient error, retry
                         last_error = Some(XXError::HTTPError(err, url.to_string()));
                         continue;
                     }
@@ -636,7 +667,29 @@ impl Client {
         Err(last_error.unwrap_or_else(|| error!("Request failed after {} retries", self.retries)))
     }
 
-    /// Internal helper for request with body and retry logic
+    /// Convenience wrapper for GET requests with retry
+    async fn request_with_retry<T, F, Fut>(
+        &self,
+        client: &reqwest::Client,
+        url: &reqwest::Url,
+        process_response: F,
+    ) -> XXResult<T>
+    where
+        F: Fn(reqwest::Response) -> Fut,
+        Fut: std::future::Future<Output = XXResult<T>>,
+    {
+        self.execute_with_retry::<T, String, F, Fut>(
+            client,
+            reqwest::Method::GET,
+            url,
+            None,
+            None,
+            process_response,
+        )
+        .await
+    }
+
+    /// Convenience wrapper for requests with JSON body
     async fn body_request_with_retry<T, F, Fut>(
         &self,
         client: &reqwest::Client,
@@ -650,67 +703,16 @@ impl Client {
         F: Fn(reqwest::Response) -> Fut,
         Fut: std::future::Future<Output = XXResult<T>>,
     {
-        let mut last_error = None;
-
-        for attempt in 0..=self.retries {
-            if attempt > 0 {
-                let delay = self.retry_delay * 2_u32.saturating_pow(attempt - 1);
-                let delay = delay.min(MAX_RETRY_DELAY);
-                trace!("Retry attempt {} for {} (delay: {:?})", attempt, url, delay);
-                tokio::time::sleep(delay).await;
-            }
-
-            let mut request = client.request(method.clone(), url.clone());
-
-            // Add custom headers
-            for (key, value) in &self.headers {
-                request = request.header(key.as_str(), value.as_str());
-            }
-
-            // Add authentication
-            if let Some(auth) = &self.auth {
-                request = match auth {
-                    Auth::Basic { username, password } => {
-                        request.basic_auth(username, Some(password))
-                    }
-                    Auth::Bearer(token) => request.bearer_auth(token),
-                };
-            }
-
-            // Set content type for JSON
-            if is_json {
-                request = request.header("Content-Type", "application/json");
-            }
-
-            // Add body
-            request = request.body(body.clone());
-
-            match request.send().await {
-                Ok(resp) => {
-                    if resp.status().is_server_error() && attempt < self.retries {
-                        last_error = Some(error!("Server error: {}", resp.status()));
-                        continue;
-                    }
-
-                    resp.error_for_status_ref()
-                        .map_err(|err| XXError::HTTPError(err, url.to_string()))?;
-
-                    return process_response(resp).await;
-                }
-                Err(err) => {
-                    if (err.is_timeout() || err.is_connect()) && attempt < self.retries {
-                        last_error = Some(XXError::HTTPError(err, url.to_string()));
-                        continue;
-                    }
-                    return Err(XXError::HTTPError(err, url.to_string()));
-                }
-            }
-        }
-
-        Err(last_error.unwrap_or_else(|| error!("Request failed after {} retries", self.retries)))
+        let content_type = if is_json {
+            Some("application/json")
+        } else {
+            None
+        };
+        self.execute_with_retry(client, method, url, Some(body), content_type, process_response)
+            .await
     }
 
-    /// Internal helper for form request with retry logic
+    /// Convenience wrapper for form requests
     async fn request_form_with_retry<T, F, Fut>(
         &self,
         client: &reqwest::Client,
@@ -723,64 +725,18 @@ impl Client {
         F: Fn(reqwest::Response) -> Fut,
         Fut: std::future::Future<Output = XXResult<T>>,
     {
-        let mut last_error = None;
-
-        for attempt in 0..=self.retries {
-            if attempt > 0 {
-                let delay = self.retry_delay * 2_u32.saturating_pow(attempt - 1);
-                let delay = delay.min(MAX_RETRY_DELAY);
-                trace!("Retry attempt {} for {} (delay: {:?})", attempt, url, delay);
-                tokio::time::sleep(delay).await;
-            }
-
-            let mut request = client.request(method.clone(), url.clone());
-
-            // Add custom headers
-            for (key, value) in &self.headers {
-                request = request.header(key.as_str(), value.as_str());
-            }
-
-            // Add authentication
-            if let Some(auth) = &self.auth {
-                request = match auth {
-                    Auth::Basic { username, password } => {
-                        request.basic_auth(username, Some(password))
-                    }
-                    Auth::Bearer(token) => request.bearer_auth(token),
-                };
-            }
-
-            // Add form data with content-type
-            request = request
-                .header("Content-Type", "application/x-www-form-urlencoded")
-                .body(form_body.clone());
-
-            match request.send().await {
-                Ok(resp) => {
-                    if resp.status().is_server_error() && attempt < self.retries {
-                        last_error = Some(error!("Server error: {}", resp.status()));
-                        continue;
-                    }
-
-                    resp.error_for_status_ref()
-                        .map_err(|err| XXError::HTTPError(err, url.to_string()))?;
-
-                    return process_response(resp).await;
-                }
-                Err(err) => {
-                    if (err.is_timeout() || err.is_connect()) && attempt < self.retries {
-                        last_error = Some(XXError::HTTPError(err, url.to_string()));
-                        continue;
-                    }
-                    return Err(XXError::HTTPError(err, url.to_string()));
-                }
-            }
-        }
-
-        Err(last_error.unwrap_or_else(|| error!("Request failed after {} retries", self.retries)))
+        self.execute_with_retry(
+            client,
+            method,
+            url,
+            Some(form_body),
+            Some("application/x-www-form-urlencoded"),
+            process_response,
+        )
+        .await
     }
 
-    /// Internal helper for DELETE request with retry logic
+    /// Convenience wrapper for DELETE requests
     async fn delete_with_retry<T, F, Fut>(
         &self,
         client: &reqwest::Client,
@@ -791,59 +747,18 @@ impl Client {
         F: Fn(reqwest::Response) -> Fut,
         Fut: std::future::Future<Output = XXResult<T>>,
     {
-        let mut last_error = None;
-
-        for attempt in 0..=self.retries {
-            if attempt > 0 {
-                let delay = self.retry_delay * 2_u32.saturating_pow(attempt - 1);
-                let delay = delay.min(MAX_RETRY_DELAY);
-                trace!("Retry attempt {} for {} (delay: {:?})", attempt, url, delay);
-                tokio::time::sleep(delay).await;
-            }
-
-            let mut request = client.delete(url.clone());
-
-            // Add custom headers
-            for (key, value) in &self.headers {
-                request = request.header(key.as_str(), value.as_str());
-            }
-
-            // Add authentication
-            if let Some(auth) = &self.auth {
-                request = match auth {
-                    Auth::Basic { username, password } => {
-                        request.basic_auth(username, Some(password))
-                    }
-                    Auth::Bearer(token) => request.bearer_auth(token),
-                };
-            }
-
-            match request.send().await {
-                Ok(resp) => {
-                    if resp.status().is_server_error() && attempt < self.retries {
-                        last_error = Some(error!("Server error: {}", resp.status()));
-                        continue;
-                    }
-
-                    resp.error_for_status_ref()
-                        .map_err(|err| XXError::HTTPError(err, url.to_string()))?;
-
-                    return process_response(resp).await;
-                }
-                Err(err) => {
-                    if (err.is_timeout() || err.is_connect()) && attempt < self.retries {
-                        last_error = Some(XXError::HTTPError(err, url.to_string()));
-                        continue;
-                    }
-                    return Err(XXError::HTTPError(err, url.to_string()));
-                }
-            }
-        }
-
-        Err(last_error.unwrap_or_else(|| error!("Request failed after {} retries", self.retries)))
+        self.execute_with_retry::<T, String, F, Fut>(
+            client,
+            reqwest::Method::DELETE,
+            url,
+            None,
+            None,
+            process_response,
+        )
+        .await
     }
 
-    /// Internal helper for HEAD request with retry logic
+    /// Convenience wrapper for HEAD requests
     async fn head_with_retry<T, F, Fut>(
         &self,
         client: &reqwest::Client,
@@ -854,56 +769,15 @@ impl Client {
         F: Fn(reqwest::Response) -> Fut,
         Fut: std::future::Future<Output = XXResult<T>>,
     {
-        let mut last_error = None;
-
-        for attempt in 0..=self.retries {
-            if attempt > 0 {
-                let delay = self.retry_delay * 2_u32.saturating_pow(attempt - 1);
-                let delay = delay.min(MAX_RETRY_DELAY);
-                trace!("Retry attempt {} for {} (delay: {:?})", attempt, url, delay);
-                tokio::time::sleep(delay).await;
-            }
-
-            let mut request = client.head(url.clone());
-
-            // Add custom headers
-            for (key, value) in &self.headers {
-                request = request.header(key.as_str(), value.as_str());
-            }
-
-            // Add authentication
-            if let Some(auth) = &self.auth {
-                request = match auth {
-                    Auth::Basic { username, password } => {
-                        request.basic_auth(username, Some(password))
-                    }
-                    Auth::Bearer(token) => request.bearer_auth(token),
-                };
-            }
-
-            match request.send().await {
-                Ok(resp) => {
-                    if resp.status().is_server_error() && attempt < self.retries {
-                        last_error = Some(error!("Server error: {}", resp.status()));
-                        continue;
-                    }
-
-                    resp.error_for_status_ref()
-                        .map_err(|err| XXError::HTTPError(err, url.to_string()))?;
-
-                    return process_response(resp).await;
-                }
-                Err(err) => {
-                    if (err.is_timeout() || err.is_connect()) && attempt < self.retries {
-                        last_error = Some(XXError::HTTPError(err, url.to_string()));
-                        continue;
-                    }
-                    return Err(XXError::HTTPError(err, url.to_string()));
-                }
-            }
-        }
-
-        Err(last_error.unwrap_or_else(|| error!("Request failed after {} retries", self.retries)))
+        self.execute_with_retry::<T, String, F, Fut>(
+            client,
+            reqwest::Method::HEAD,
+            url,
+            None,
+            None,
+            process_response,
+        )
+        .await
     }
 
     fn build_client(&self) -> XXResult<reqwest::Client> {
