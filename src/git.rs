@@ -865,7 +865,10 @@ impl Git {
                 }
                 Some(Tag {
                     name,
-                    sha: parts.get(1).filter(|s| !s.is_empty()).map(|s| s.to_string()),
+                    sha: parts
+                        .get(1)
+                        .filter(|s| !s.is_empty())
+                        .map(|s| s.to_string()),
                 })
             })
             .collect();
@@ -928,7 +931,10 @@ impl Git {
                 Some(Branch {
                     is_current: parts.first() == Some(&"*"),
                     name,
-                    sha: parts.get(2).filter(|s| !s.is_empty()).map(|s| s.to_string()),
+                    sha: parts
+                        .get(2)
+                        .filter(|s| !s.is_empty())
+                        .map(|s| s.to_string()),
                 })
             })
             .collect();
