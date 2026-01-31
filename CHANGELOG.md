@@ -16,6 +16,13 @@
 
 - Pin homedir to 0.3.5 for MSRV compatibility
 - Cargo build
+## [2.4.0](https://github.com/jdx/xx/compare/v2.3.1...v2.4.0) (2026-01-31)
+
+
+### Features
+
+* add major utility improvements across all modules ([#170](https://github.com/jdx/xx/issues/170)) ([27121b8](https://github.com/jdx/xx/commit/27121b8fd89026e7b2559fdf517e06da3f560410))
+
 ## [2.3.1](https://github.com/jdx/xx/compare/v2.3.0...v2.3.1) (2026-01-19)
 
 
