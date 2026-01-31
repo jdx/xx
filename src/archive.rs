@@ -388,6 +388,8 @@ pub fn zip_multi(sources: &[&Path], archive: &Path) -> XXResult<()> {
 }
 
 /// Internal helper to add a directory recursively to a zip archive
+///
+/// Note: Symbolic links are skipped to prevent symlink cycles and security issues.
 #[cfg(feature = "archive_zip")]
 fn add_dir_to_zip<W: std::io::Write + std::io::Seek>(
     zip_writer: &mut zip::ZipWriter<W>,
@@ -406,6 +408,15 @@ fn add_dir_to_zip<W: std::io::Write + std::io::Seek>(
     {
         let entry = entry.map_err(|err| XXError::ArchiveIOError(err, dir.to_path_buf()))?;
         let path = entry.path();
+        let file_type = entry
+            .file_type()
+            .map_err(|err| XXError::ArchiveIOError(err, path.clone()))?;
+
+        // Skip symbolic links to prevent cycles and security issues
+        if file_type.is_symlink() {
+            trace!("Skipping symlink: {}", path.display());
+            continue;
+        }
 
         // Calculate relative path from base
         let relative = path
@@ -415,7 +426,7 @@ fn add_dir_to_zip<W: std::io::Write + std::io::Seek>(
             .to_string();
         let archive_path = format!("{}/{}", dir_name, relative);
 
-        if path.is_dir() {
+        if file_type.is_dir() {
             // Add directory entry
             zip_writer
                 .add_directory(&format!("{}/", archive_path), options)
@@ -423,7 +434,7 @@ fn add_dir_to_zip<W: std::io::Write + std::io::Seek>(
 
             // Recurse into subdirectory
             add_dir_to_zip(zip_writer, &path, base, archive, options)?;
-        } else {
+        } else if file_type.is_file() {
             add_file_to_zip(
                 zip_writer,
                 &path,
@@ -432,12 +443,15 @@ fn add_dir_to_zip<W: std::io::Write + std::io::Seek>(
                 options,
             )?;
         }
+        // Other file types (block devices, etc.) are silently skipped
     }
 
     Ok(())
 }
 
 /// Internal helper to add a file to a zip archive
+///
+/// Uses streaming to avoid loading entire files into memory.
 #[cfg(feature = "archive_zip")]
 fn add_file_to_zip<W: std::io::Write + std::io::Seek>(
     zip_writer: &mut zip::ZipWriter<W>,
@@ -446,8 +460,6 @@ fn add_file_to_zip<W: std::io::Write + std::io::Seek>(
     archive: &Path,
     options: zip::write::SimpleFileOptions,
 ) -> XXResult<()> {
-    use std::io::{Read, Write};
-
     let archive_name_str = archive_name.to_string_lossy();
 
     // Get file permissions on Unix
@@ -465,14 +477,10 @@ fn add_file_to_zip<W: std::io::Write + std::io::Seek>(
         .start_file(&*archive_name_str, options)
         .map_err(|err| XXError::ArchiveZipError(err, archive.to_path_buf()))?;
 
+    // Use streaming copy to avoid loading large files into memory
     let mut f = file::open(file_path)?;
-    let mut buffer = Vec::new();
-    f.read_to_end(&mut buffer)
+    std::io::copy(&mut f, zip_writer)
         .map_err(|err| XXError::ArchiveIOError(err, file_path.to_path_buf()))?;
-
-    zip_writer
-        .write_all(&buffer)
-        .map_err(|err| XXError::ArchiveIOError(err, archive.to_path_buf()))?;
 
     Ok(())
 }
