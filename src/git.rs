@@ -842,10 +842,13 @@ impl Git {
     /// }
     /// ```
     pub fn list_tags(&self) -> XXResult<Vec<Tag>> {
+        // Use conditional format to get commit SHA for both lightweight and annotated tags.
+        // For annotated tags, %(*objectname:short) gives the commit SHA.
+        // For lightweight tags, %(objectname:short) gives the commit SHA directly.
         let output = git_cmd!(
             &self.dir,
             "tag",
-            "--format=%(refname:short)\t%(objectname:short)"
+            "--format=%(refname:short)\t%(if)%(*objectname:short)%(then)%(*objectname:short)%(else)%(objectname:short)%(end)"
         )
         .read()
         .map_err(|err| XXError::GitError(err, self.dir.clone()))?;
@@ -853,12 +856,17 @@ impl Git {
         let tags = output
             .lines()
             .filter(|line| !line.is_empty())
-            .map(|line| {
+            .filter_map(|line| {
                 let parts: Vec<&str> = line.split('\t').collect();
-                Tag {
-                    name: parts.first().unwrap_or(&"").to_string(),
-                    sha: parts.get(1).map(|s| s.to_string()),
+                let name = parts.first()?.to_string();
+                // Skip tags with empty names
+                if name.is_empty() {
+                    return None;
                 }
+                Some(Tag {
+                    name,
+                    sha: parts.get(1).filter(|s| !s.is_empty()).map(|s| s.to_string()),
+                })
             })
             .collect();
 
@@ -910,13 +918,18 @@ impl Git {
         let branches = output
             .lines()
             .filter(|line| !line.is_empty())
-            .map(|line| {
+            .filter_map(|line| {
                 let parts: Vec<&str> = line.split('\t').collect();
-                Branch {
-                    is_current: parts.first() == Some(&"*"),
-                    name: parts.get(1).unwrap_or(&"").to_string(),
-                    sha: parts.get(2).map(|s| s.to_string()),
+                let name = parts.get(1)?.to_string();
+                // Skip branches with empty names
+                if name.is_empty() {
+                    return None;
                 }
+                Some(Branch {
+                    is_current: parts.first() == Some(&"*"),
+                    name,
+                    sha: parts.get(2).filter(|s| !s.is_empty()).map(|s| s.to_string()),
+                })
             })
             .collect();
 
