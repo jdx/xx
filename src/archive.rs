@@ -508,6 +508,9 @@ fn add_file_to_zip<W: std::io::Write + std::io::Seek>(
 ) -> XXResult<()> {
     let archive_name_str = archive_name.to_string_lossy();
 
+    // Open file first to avoid corrupting the archive if the file can't be read
+    let mut f = file::open(file_path)?;
+
     // Get file permissions on Unix
     #[cfg(unix)]
     let options = {
@@ -524,7 +527,6 @@ fn add_file_to_zip<W: std::io::Write + std::io::Seek>(
         .map_err(|err| XXError::ArchiveZipError(err, archive.to_path_buf()))?;
 
     // Use streaming copy to avoid loading large files into memory
-    let mut f = file::open(file_path)?;
     std::io::copy(&mut f, zip_writer)
         .map_err(|err| XXError::ArchiveIOError(err, file_path.to_path_buf()))?;
 
