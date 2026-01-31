@@ -44,7 +44,9 @@
 //! # }
 //! ```
 
+use std::collections::HashMap;
 use std::io::BufRead;
+use std::path::{Path, PathBuf};
 use std::process::{Command, ExitStatus, Stdio};
 use std::sync::Arc;
 use std::thread;
@@ -91,6 +93,11 @@ pub struct XXExpression {
     stderr_capture: bool,
     stdout_handler: Option<Arc<LineHandler>>,
     stderr_handler: Option<Arc<LineHandler>>,
+    env_vars: HashMap<OsString, OsString>,
+    env_clear: bool,
+    cwd: Option<PathBuf>,
+    stdin_data: Option<Vec<u8>>,
+    unchecked: bool,
 }
 
 pub fn cmd<T, U>(program: T, args: U) -> XXExpression
@@ -135,13 +142,45 @@ impl XXExpression {
             // Inline streaming behavior previously provided by `run_streaming`
             let mut cmd = Command::new(&self.program);
             cmd.args(&self.args)
-                .stdin(Stdio::inherit())
                 .stdout(Stdio::piped())
                 .stderr(Stdio::piped());
+
+            // Handle stdin
+            if self.stdin_data.is_some() {
+                cmd.stdin(Stdio::piped());
+            } else {
+                cmd.stdin(Stdio::inherit());
+            }
+
+            // Handle environment
+            if self.env_clear {
+                cmd.env_clear();
+            }
+            for (k, v) in &self.env_vars {
+                cmd.env(k, v);
+            }
+
+            // Handle working directory
+            if let Some(cwd) = &self.cwd {
+                cmd.current_dir(cwd);
+            }
 
             let mut child = cmd
                 .spawn()
                 .map_err(|err| XXError::ProcessError(err, self.to_string()))?;
+
+            // Write stdin data in a separate thread to avoid deadlock when combining
+            // large stdin with stdout/stderr handlers. Without this, if stdin data
+            // exceeds the pipe buffer (~64KB) and the child fills its stdout buffer
+            // before consuming stdin, both parent and child would block.
+            let stdin_handle = self.stdin_data.clone().and_then(|stdin_data| {
+                child.stdin.take().map(|mut stdin| {
+                    thread::spawn(move || {
+                        use std::io::Write;
+                        let _ = stdin.write_all(&stdin_data);
+                    })
+                })
+            });
 
             let mut stdout = child
                 .stdout
@@ -218,10 +257,15 @@ impl XXExpression {
                 .wait()
                 .map_err(|err| XXError::ProcessError(err, self.to_string()))?;
 
+            if let Some(h) = stdin_handle {
+                let _ = h.join();
+            }
             let _ = stdout_handle.join();
             let _ = stderr_handle.join();
 
-            check_status(status).map_err(|err| XXError::ProcessError(err, self.to_string()))?;
+            if !self.unchecked {
+                check_status(status).map_err(|err| XXError::ProcessError(err, self.to_string()))?;
+            }
             return Ok(Output {
                 status,
                 stdout: vec![],
@@ -238,13 +282,42 @@ impl XXExpression {
         if self.stdout_handler.is_some() || self.stderr_handler.is_some() {
             let mut cmd = Command::new(&self.program);
             cmd.args(&self.args)
-                .stdin(Stdio::inherit())
                 .stdout(Stdio::piped())
                 .stderr(Stdio::piped());
+
+            // Handle stdin
+            if self.stdin_data.is_some() {
+                cmd.stdin(Stdio::piped());
+            } else {
+                cmd.stdin(Stdio::inherit());
+            }
+
+            // Handle environment
+            if self.env_clear {
+                cmd.env_clear();
+            }
+            for (k, v) in &self.env_vars {
+                cmd.env(k, v);
+            }
+
+            // Handle working directory
+            if let Some(cwd) = &self.cwd {
+                cmd.current_dir(cwd);
+            }
 
             let mut child = cmd
                 .spawn()
                 .map_err(|err| XXError::ProcessError(err, self.to_string()))?;
+
+            // Write stdin data in a separate thread to avoid deadlock (see run() for details)
+            let stdin_handle = self.stdin_data.clone().and_then(|stdin_data| {
+                child.stdin.take().map(|mut stdin| {
+                    thread::spawn(move || {
+                        use std::io::Write;
+                        let _ = stdin.write_all(&stdin_data);
+                    })
+                })
+            });
 
             let mut stderr = child
                 .stderr
@@ -326,8 +399,13 @@ impl XXExpression {
             let status = child
                 .wait()
                 .map_err(|err| XXError::ProcessError(err, self.to_string()))?;
+            if let Some(h) = stdin_handle {
+                let _ = h.join();
+            }
             let _ = stderr_handle.join();
-            check_status(status).map_err(|err| XXError::ProcessError(err, self.to_string()))?;
+            if !self.unchecked {
+                check_status(status).map_err(|err| XXError::ProcessError(err, self.to_string()))?;
+            }
             // Match duct's `read()` behavior: trim a single trailing newline
             if acc.ends_with('\n') {
                 let _ = acc.pop();
@@ -361,6 +439,135 @@ impl XXExpression {
         self
     }
 
+    /// Set an environment variable for this command
+    /// # Example
+    /// ```
+    /// use xx::process;
+    /// let output = process::cmd("sh", ["-c", "echo $MY_VAR"])
+    ///     .env("MY_VAR", "hello")
+    ///     .read()
+    ///     .unwrap();
+    /// assert_eq!(output, "hello");
+    /// ```
+    pub fn env<K, V>(mut self, key: K, value: V) -> Self
+    where
+        K: Into<OsString>,
+        V: Into<OsString>,
+    {
+        self.env_vars.insert(key.into(), value.into());
+        self
+    }
+
+    /// Set multiple environment variables for this command
+    /// # Example
+    /// ```
+    /// use xx::process;
+    /// use std::collections::HashMap;
+    /// let mut env = HashMap::new();
+    /// env.insert("VAR1", "value1");
+    /// env.insert("VAR2", "value2");
+    /// let output = process::cmd("sh", ["-c", "echo $VAR1 $VAR2"])
+    ///     .envs(env)
+    ///     .read()
+    ///     .unwrap();
+    /// assert_eq!(output, "value1 value2");
+    /// ```
+    pub fn envs<I, K, V>(mut self, vars: I) -> Self
+    where
+        I: IntoIterator<Item = (K, V)>,
+        K: Into<OsString>,
+        V: Into<OsString>,
+    {
+        for (k, v) in vars {
+            self.env_vars.insert(k.into(), v.into());
+        }
+        self
+    }
+
+    /// Clear all environment variables before running (start with empty environment)
+    /// # Example
+    /// ```
+    /// use xx::process;
+    /// let output = process::cmd("sh", ["-c", "echo ${PATH:-empty}"])
+    ///     .env_clear()
+    ///     .env("PATH", "/bin:/usr/bin")
+    ///     .read()
+    ///     .unwrap();
+    /// assert_eq!(output, "/bin:/usr/bin");
+    /// ```
+    pub fn env_clear(mut self) -> Self {
+        self.env_clear = true;
+        self
+    }
+
+    /// Set the working directory for this command
+    /// # Example
+    /// ```
+    /// use xx::process;
+    /// let output = process::cmd("pwd", Vec::<&str>::new())
+    ///     .cwd("/tmp")
+    ///     .read()
+    ///     .unwrap();
+    /// assert!(output.contains("tmp"));
+    /// ```
+    pub fn cwd<P: AsRef<Path>>(mut self, dir: P) -> Self {
+        self.cwd = Some(dir.as_ref().to_path_buf());
+        self
+    }
+
+    /// Provide stdin data as bytes
+    /// # Example
+    /// ```
+    /// use xx::process;
+    /// let output = process::cmd("cat", Vec::<&str>::new())
+    ///     .stdin_bytes(b"hello world")
+    ///     .read()
+    ///     .unwrap();
+    /// assert_eq!(output, "hello world");
+    /// ```
+    pub fn stdin_bytes<B: AsRef<[u8]>>(mut self, data: B) -> Self {
+        self.stdin_data = Some(data.as_ref().to_vec());
+        self
+    }
+
+    /// Provide stdin data from a file
+    /// # Example
+    /// ```no_run
+    /// use xx::process;
+    /// let output = process::cmd("cat", Vec::<&str>::new())
+    ///     .stdin_file("input.txt")
+    ///     .unwrap()
+    ///     .read()
+    ///     .unwrap();
+    /// ```
+    pub fn stdin_file<P: AsRef<Path>>(mut self, path: P) -> XXResult<Self> {
+        let path = path.as_ref();
+        let data =
+            std::fs::read(path).map_err(|err| XXError::FileError(err, path.to_path_buf()))?;
+        self.stdin_data = Some(data);
+        Ok(self)
+    }
+
+    /// Don't check the exit status (allow non-zero exit codes)
+    ///
+    /// By default, `run()` and `read()` return an error if the process exits
+    /// with a non-zero status. This method disables that check.
+    ///
+    /// # Example
+    /// ```
+    /// use xx::process;
+    /// // This would normally error because false exits with code 1
+    /// let output = process::cmd("false", Vec::<&str>::new())
+    ///     .unchecked()
+    ///     .run()
+    ///     .unwrap();
+    /// assert!(!output.status.success());
+    /// ```
+    pub fn unchecked(mut self) -> Self {
+        self.unchecked = true;
+        self
+    }
+
     fn build_expr(&self) -> duct::Expression {
         let mut expr = duct::cmd(self.program.clone(), self.args.clone());
         if self.stdout_capture {
@@ -368,6 +575,22 @@ impl XXExpression {
         }
         if self.stderr_capture {
             expr = expr.stderr_capture();
+        }
+        if self.env_clear {
+            expr = expr.full_env(self.env_vars.clone());
+        } else {
+            for (k, v) in &self.env_vars {
+                expr = expr.env(k, v);
+            }
+        }
+        if let Some(cwd) = &self.cwd {
+            expr = expr.dir(cwd);
+        }
+        if let Some(stdin_data) = &self.stdin_data {
+            expr = expr.stdin_bytes(stdin_data.clone());
+        }
+        if self.unchecked {
+            expr = expr.unchecked();
         }
         expr
     }
@@ -522,5 +745,59 @@ mod tests {
         "#;
         let out = cmd("sh", ["-c", script]).read().unwrap();
         assert_eq!(out, "a\nb");
+    }
+
+    #[test]
+    fn test_env() {
+        let out = cmd("sh", ["-c", "echo $TEST_VAR"])
+            .env("TEST_VAR", "hello")
+            .read()
+            .unwrap();
+        assert_eq!(out, "hello");
+    }
+
+    #[test]
+    fn test_envs() {
+        let mut vars = std::collections::HashMap::new();
+        vars.insert("VAR1", "a");
+        vars.insert("VAR2", "b");
+        let out = cmd("sh", ["-c", "echo $VAR1 $VAR2"])
+            .envs(vars)
+            .read()
+            .unwrap();
+        assert_eq!(out, "a b");
+    }
+
+    #[test]
+    fn test_cwd() {
+        let out = cmd("pwd", Vec::<&str>::new()).cwd("/tmp").read().unwrap();
+        // Handle macOS /private/tmp symlink
+        assert!(out.contains("tmp"));
+    }
+
+    #[test]
+    fn test_stdin_bytes() {
+        let out = cmd("cat", Vec::<&str>::new())
+            .stdin_bytes(b"hello stdin")
+            .read()
+            .unwrap();
+        assert_eq!(out, "hello stdin");
+    }
+
+    #[test]
+    fn test_unchecked() {
+        // Without unchecked, this would error
+        let output = cmd("false", Vec::<&str>::new()).unchecked().run().unwrap();
+        assert!(!output.status.success());
+    }
+
+    #[test]
+    fn test_unchecked_read() {
+        // Without unchecked, this would error
+        let output = cmd("sh", ["-c", "echo hello; exit 1"])
+            .unchecked()
+            .read()
+            .unwrap();
+        assert_eq!(output, "hello");
     }
 }

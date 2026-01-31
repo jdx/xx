@@ -557,6 +557,398 @@ pub fn which<S: AsRef<str>>(name: S) -> Option<PathBuf> {
     None
 }
 
+/// Read a file as bytes
+/// # Arguments
+/// * `path` - A path to a file
+/// # Returns
+/// A vector of bytes with the file contents
+/// # Errors
+/// Returns an error if the file does not exist
+/// # Example
+/// ```
+/// use xx::file;
+/// let tmp = tempfile::tempdir().unwrap();
+/// let path = tmp.path().join("test.bin");
+/// file::write(&path, &[0x00, 0x01, 0x02]).unwrap();
+/// let contents = file::read(&path).unwrap();
+/// assert_eq!(contents, vec![0x00, 0x01, 0x02]);
+/// ```
+pub fn read<P: AsRef<Path>>(path: P) -> XXResult<Vec<u8>> {
+    let path = path.as_ref();
+    debug!("read: {:?}", path);
+    fs::read(path).map_err(|err| XXError::FileError(err, path.to_path_buf()))
+}
+
+/// Create an empty file or update its modification time
+/// # Arguments
+/// * `path` - A path to a file
+/// # Returns
+/// A result
+/// # Errors
+/// Returns an error if the file cannot be created or updated
+/// # Example
+/// ```
+/// use xx::file;
+/// let tmp = tempfile::tempdir().unwrap();
+/// let path = tmp.path().join("new_file.txt");
+/// file::touch_file(&path).unwrap();
+/// assert!(path.exists());
+/// ```
+pub fn touch_file<P: AsRef<Path>>(path: P) -> XXResult<()> {
+    let path = path.as_ref();
+    debug!("touch_file: {:?}", path);
+    if let Some(parent) = path.parent() {
+        mkdirp(parent)?;
+    }
+    if !path.exists() {
+        fs::File::create(path).map_err(|err| XXError::FileError(err, path.to_path_buf()))?;
+    }
+    let now = filetime::FileTime::now();
+    filetime::set_file_times(path, now, now)
+        .map_err(|err| XXError::FileError(err, path.to_path_buf()))?;
+    Ok(())
+}
+
+/// Remove a file
+/// # Arguments
+/// * `path` - A path to a file
+/// # Returns
+/// A result (Ok if file was removed or didn't exist)
+/// # Errors
+/// Returns an error if the file cannot be removed
+/// # Example
+/// ```
+/// use xx::file;
+/// let tmp = tempfile::tempdir().unwrap();
+/// let path = tmp.path().join("to_remove.txt");
+/// file::write(&path, "content").unwrap();
+/// file::remove_file(&path).unwrap();
+/// assert!(!path.exists());
+/// ```
+pub fn remove_file<P: AsRef<Path>>(path: P) -> XXResult<()> {
+    let path = path.as_ref();
+    if path.exists() {
+        debug!("remove_file: {:?}", path);
+        fs::remove_file(path).map_err(|err| XXError::FileError(err, path.to_path_buf()))?;
+    }
+    Ok(())
+}
+
+/// Copy a file
+/// # Arguments
+/// * `from` - Source file path
+/// * `to` - Destination file path
+/// # Returns
+/// The number of bytes copied
+/// # Errors
+/// Returns an error if the file cannot be copied
+/// # Example
+/// ```
+/// use xx::file;
+/// let tmp = tempfile::tempdir().unwrap();
+/// let from = tmp.path().join("source.txt");
+/// let to = tmp.path().join("dest.txt");
+/// file::write(&from, "content").unwrap();
+/// file::copy(&from, &to).unwrap();
+/// assert_eq!(file::read_to_string(&to).unwrap(), "content");
+/// ```
+pub fn copy<P: AsRef<Path>, Q: AsRef<Path>>(from: P, to: Q) -> XXResult<u64> {
+    let from = from.as_ref();
+    let to = to.as_ref();
+    debug!("copy: {:?} -> {:?}", from, to);
+    if let Some(parent) = to.parent() {
+        mkdirp(parent)?;
+    }
+    fs::copy(from, to).map_err(|err| XXError::FileError(err, from.to_path_buf()))
+}
+
+/// Create a symbolic link
+/// # Arguments
+/// * `original` - The path the symlink will point to
+/// * `link` - The path where the symlink will be created
+/// # Returns
+/// A result
+/// # Errors
+/// Returns an error if the symlink cannot be created
+/// # Example
+/// ```
+/// use xx::file;
+/// let tmp = tempfile::tempdir().unwrap();
+/// let original = tmp.path().join("original.txt");
+/// let link = tmp.path().join("link.txt");
+/// file::write(&original, "content").unwrap();
+/// file::symlink(&original, &link).unwrap();
+/// assert!(link.is_symlink());
+/// ```
+#[cfg(unix)]
+pub fn symlink<P: AsRef<Path>, Q: AsRef<Path>>(original: P, link: Q) -> XXResult<()> {
+    let original = original.as_ref();
+    let link = link.as_ref();
+    debug!("symlink: {:?} -> {:?}", link, original);
+    if let Some(parent) = link.parent() {
+        mkdirp(parent)?;
+    }
+    std::os::unix::fs::symlink(original, link)
+        .map_err(|err| XXError::FileError(err, link.to_path_buf()))
+}
+
+#[cfg(windows)]
+pub fn symlink<P: AsRef<Path>, Q: AsRef<Path>>(original: P, link: Q) -> XXResult<()> {
+    let original = original.as_ref();
+    let link = link.as_ref();
+    debug!("symlink: {:?} -> {:?}", link, original);
+    if let Some(parent) = link.parent() {
+        mkdirp(parent)?;
+    }
+    // Determine if target is a directory:
+    // 1. Check if target exists and is a directory
+    // 2. If target doesn't exist, check if path ends with separator (indicates directory intent)
+    // 3. If target doesn't exist and has no extension, assume directory
+    let is_dir = if original.exists() {
+        original.is_dir()
+    } else {
+        let path_str = original.to_string_lossy();
+        path_str.ends_with('/') || path_str.ends_with('\\') || original.extension().is_none()
+    };
+    if is_dir {
+        std::os::windows::fs::symlink_dir(original, link)
+            .map_err(|err| XXError::FileError(err, link.to_path_buf()))
+    } else {
+        std::os::windows::fs::symlink_file(original, link)
+            .map_err(|err| XXError::FileError(err, link.to_path_buf()))
+    }
+}
+
+/// Check if a path is a symbolic link
+/// # Arguments
+/// * `path` - A path to check
+/// # Returns
+/// true if the path is a symlink, false otherwise
+/// # Example
+/// ```
+/// use xx::file;
+/// let tmp = tempfile::tempdir().unwrap();
+/// let original = tmp.path().join("original.txt");
+/// let link = tmp.path().join("link.txt");
+/// file::write(&original, "content").unwrap();
+/// file::symlink(&original, &link).unwrap();
+/// assert!(file::is_symlink(&link));
+/// assert!(!file::is_symlink(&original));
+/// ```
+pub fn is_symlink<P: AsRef<Path>>(path: P) -> bool {
+    path.as_ref().is_symlink()
+}
+
+/// Resolve a symbolic link to its target
+/// # Arguments
+/// * `path` - A path to a symlink
+/// # Returns
+/// The resolved path
+/// # Errors
+/// Returns an error if the path cannot be resolved
+/// # Example
+/// ```
+/// use xx::file;
+/// let tmp = tempfile::tempdir().unwrap();
+/// let original = tmp.path().join("original.txt");
+/// let link = tmp.path().join("link.txt");
+/// file::write(&original, "content").unwrap();
+/// file::symlink(&original, &link).unwrap();
+/// let resolved = file::resolve_symlink(&link).unwrap();
+/// assert_eq!(resolved, original);
+/// ```
+pub fn resolve_symlink<P: AsRef<Path>>(path: P) -> XXResult<PathBuf> {
+    let path = path.as_ref();
+    fs::read_link(path).map_err(|err| XXError::FileError(err, path.to_path_buf()))
+}
+
+/// Display path relative to current directory if shorter
+/// # Arguments
+/// * `path` - A path
+/// # Returns
+/// A string with the path, using relative form if shorter
+/// # Example
+/// ```
+/// use xx::file;
+/// // If cwd is /home/user, then /home/user/foo becomes ./foo
+/// // but /etc/passwd stays as /etc/passwd
+/// let display = file::display_rel_path("/home/user/foo");
+/// ```
+pub fn display_rel_path<P: AsRef<Path>>(path: P) -> String {
+    let path = path.as_ref();
+    if let Ok(cwd) = std::env::current_dir()
+        && let Ok(rel) = path.strip_prefix(&cwd)
+    {
+        let rel_str = format!("./{}", rel.display());
+        let abs_str = path.display().to_string();
+        if rel_str.len() < abs_str.len() {
+            return rel_str;
+        }
+    }
+    display_path(path)
+}
+
+/// Split a filename into stem and extension
+/// # Arguments
+/// * `path` - A path to a file
+/// # Returns
+/// A tuple of (stem, extension) where extension includes the dot
+/// # Example
+/// ```
+/// use xx::file;
+/// assert_eq!(file::split_file_name("foo.tar.gz"), ("foo.tar".to_string(), Some(".gz".to_string())));
+/// assert_eq!(file::split_file_name("foo"), ("foo".to_string(), None));
+/// assert_eq!(file::split_file_name(".hidden"), (".hidden".to_string(), None));
+/// ```
+pub fn split_file_name<P: AsRef<Path>>(path: P) -> (String, Option<String>) {
+    let path = path.as_ref();
+    let name = path
+        .file_name()
+        .and_then(|n| n.to_str())
+        .unwrap_or_default();
+
+    // Handle hidden files and files without extension
+    if name.starts_with('.') && !name[1..].contains('.') {
+        return (name.to_string(), None);
+    }
+
+    if let Some(dot_pos) = name.rfind('.') {
+        if dot_pos == 0 {
+            (name.to_string(), None)
+        } else {
+            let (stem, ext) = name.split_at(dot_pos);
+            (stem.to_string(), Some(ext.to_string()))
+        }
+    } else {
+        (name.to_string(), None)
+    }
+}
+
+/// Check if a file is executable
+/// # Arguments
+/// * `path` - A path to a file
+/// # Returns
+/// true if the file has execute permission, false otherwise
+/// # Example
+/// ```
+/// use xx::file;
+/// let tmp = tempfile::tempdir().unwrap();
+/// let path = tmp.path().join("script.sh");
+/// file::write(&path, "#!/bin/sh\necho hello").unwrap();
+/// assert!(!file::is_executable(&path));
+/// file::make_executable(&path).unwrap();
+/// assert!(file::is_executable(&path));
+/// ```
+#[cfg(unix)]
+pub fn is_executable<P: AsRef<Path>>(path: P) -> bool {
+    let path = path.as_ref();
+    if let Ok(metadata) = fs::metadata(path) {
+        let mode = metadata.permissions().mode();
+        mode & 0o111 != 0
+    } else {
+        false
+    }
+}
+
+#[cfg(windows)]
+pub fn is_executable<P: AsRef<Path>>(path: P) -> bool {
+    let path = path.as_ref();
+    if let Some(ext) = path.extension() {
+        let ext = ext.to_string_lossy().to_lowercase();
+        matches!(ext.as_str(), "exe" | "bat" | "cmd" | "com")
+    } else {
+        false
+    }
+}
+
+/// Canonicalize a path (resolve all symlinks and normalize)
+/// # Arguments
+/// * `path` - A path to canonicalize
+/// # Returns
+/// The canonicalized path
+/// # Errors
+/// Returns an error if the path cannot be canonicalized
+/// # Example
+/// ```
+/// use xx::file;
+/// let path = file::canonicalize(".").unwrap();
+/// assert!(path.is_absolute());
+/// ```
+pub fn canonicalize<P: AsRef<Path>>(path: P) -> XXResult<PathBuf> {
+    let path = path.as_ref();
+    fs::canonicalize(path).map_err(|err| XXError::FileError(err, path.to_path_buf()))
+}
+
+/// Check if two paths point to the same file
+/// # Arguments
+/// * `path1` - First path
+/// * `path2` - Second path
+/// # Returns
+/// true if both paths point to the same file
+/// # Example
+/// ```
+/// use xx::file;
+/// let tmp = tempfile::tempdir().unwrap();
+/// let original = tmp.path().join("file.txt");
+/// let link = tmp.path().join("link.txt");
+/// file::write(&original, "content").unwrap();
+/// file::symlink(&original, &link).unwrap();
+/// assert!(file::same_file(&original, &link).unwrap());
+/// ```
+pub fn same_file<P: AsRef<Path>, Q: AsRef<Path>>(path1: P, path2: Q) -> XXResult<bool> {
+    let path1 = path1.as_ref();
+    let path2 = path2.as_ref();
+
+    let meta1 = fs::metadata(path1).map_err(|err| XXError::FileError(err, path1.to_path_buf()))?;
+    let meta2 = fs::metadata(path2).map_err(|err| XXError::FileError(err, path2.to_path_buf()))?;
+
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::MetadataExt;
+        Ok(meta1.dev() == meta2.dev() && meta1.ino() == meta2.ino())
+    }
+
+    #[cfg(windows)]
+    {
+        // On Windows, we compare file indices
+        // If indices are unavailable (returns None), we can't reliably compare
+        use std::os::windows::fs::MetadataExt;
+        match (
+            meta1.file_index(),
+            meta2.file_index(),
+            meta1.volume_serial_number(),
+            meta2.volume_serial_number(),
+        ) {
+            (Some(idx1), Some(idx2), Some(vol1), Some(vol2)) => Ok(idx1 == idx2 && vol1 == vol2),
+            // If any index is unavailable, fall back to path comparison
+            _ => Ok(path1.as_ref() == path2.as_ref()),
+        }
+    }
+}
+
+/// Get the modification time of a file as a Duration since UNIX epoch
+/// # Arguments
+/// * `path` - A path to a file
+/// # Returns
+/// Duration since UNIX epoch
+/// # Errors
+/// Returns an error if the metadata cannot be read
+/// # Example
+/// ```
+/// use xx::file;
+/// let mtime = file::modified_time("Cargo.toml").unwrap();
+/// ```
+pub fn modified_time<P: AsRef<Path>>(path: P) -> XXResult<std::time::Duration> {
+    let path = path.as_ref();
+    let metadata = fs::metadata(path).map_err(|err| XXError::FileError(err, path.to_path_buf()))?;
+    let modified = metadata
+        .modified()
+        .map_err(|err| XXError::FileError(err, path.to_path_buf()))?;
+    Ok(modified
+        .duration_since(std::time::UNIX_EPOCH)
+        .unwrap_or_default())
+}
+
 #[cfg(test)]
 mod tests {
     use pretty_assertions::assert_str_eq;
@@ -730,5 +1122,145 @@ mod tests {
 
         write(&path, "1234567890").unwrap();
         assert_eq!(size(&path).unwrap(), 10);
+    }
+
+    #[test]
+    fn test_read_bytes() {
+        let tmpdir = test::tempdir();
+        let path = tmpdir.path().join("bytes_test.bin");
+        let data = vec![0x00, 0x01, 0x02, 0xFF];
+        write(&path, &data).unwrap();
+        assert_eq!(read(&path).unwrap(), data);
+    }
+
+    #[test]
+    fn test_read_bytes_not_found() {
+        let tmpdir = test::tempdir();
+        let path = tmpdir.path().join("nonexistent.bin");
+        let result = read(&path);
+        assert!(result.is_err());
+        let err = result.unwrap_err();
+        assert!(matches!(err, crate::XXError::FileError(_, _)));
+    }
+
+    #[test]
+    #[cfg(unix)]
+    fn test_read_bytes_no_permission() {
+        use std::os::unix::fs::PermissionsExt;
+
+        let tmpdir = test::tempdir();
+        let path = tmpdir.path().join("no_read.bin");
+        write(&path, b"secret").unwrap();
+
+        // Remove read permission
+        std::fs::set_permissions(&path, std::fs::Permissions::from_mode(0o000)).unwrap();
+
+        let result = read(&path);
+        assert!(result.is_err());
+
+        // Restore permissions for cleanup
+        std::fs::set_permissions(&path, std::fs::Permissions::from_mode(0o644)).unwrap();
+    }
+
+    #[test]
+    fn test_touch_file() {
+        let tmpdir = test::tempdir();
+        let path = tmpdir.path().join("touch_test.txt");
+
+        // Test creating new file
+        touch_file(&path).unwrap();
+        assert!(path.exists());
+
+        // Test updating existing file
+        let mtime1 = modified_time(&path).unwrap();
+        std::thread::sleep(std::time::Duration::from_millis(10));
+        touch_file(&path).unwrap();
+        let mtime2 = modified_time(&path).unwrap();
+        assert!(mtime2 >= mtime1);
+    }
+
+    #[test]
+    fn test_remove_file() {
+        let tmpdir = test::tempdir();
+        let path = tmpdir.path().join("remove_test.txt");
+
+        // Create and remove
+        write(&path, "content").unwrap();
+        assert!(path.exists());
+        remove_file(&path).unwrap();
+        assert!(!path.exists());
+
+        // Removing non-existent file should be ok
+        remove_file(&path).unwrap();
+    }
+
+    #[test]
+    fn test_copy_file() {
+        let tmpdir = test::tempdir();
+        let from = tmpdir.path().join("copy_from.txt");
+        let to = tmpdir.path().join("copy_to.txt");
+
+        write(&from, "copy content").unwrap();
+        let bytes = copy(&from, &to).unwrap();
+        assert_eq!(bytes, 12);
+        assert_str_eq!(read_to_string(&to).unwrap(), "copy content");
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn test_symlink() {
+        let tmpdir = test::tempdir();
+        let original = tmpdir.path().join("original.txt");
+        let link = tmpdir.path().join("link.txt");
+
+        write(&original, "original content").unwrap();
+        symlink(&original, &link).unwrap();
+
+        assert!(is_symlink(&link));
+        assert!(!is_symlink(&original));
+        assert_eq!(resolve_symlink(&link).unwrap(), original);
+        assert_str_eq!(read_to_string(&link).unwrap(), "original content");
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn test_is_executable() {
+        let tmpdir = test::tempdir();
+        let path = tmpdir.path().join("script.sh");
+
+        write(&path, "#!/bin/sh\necho hello").unwrap();
+        assert!(!is_executable(&path));
+
+        make_executable(&path).unwrap();
+        assert!(is_executable(&path));
+    }
+
+    #[test]
+    fn test_same_file() {
+        let tmpdir = test::tempdir();
+        let file1 = tmpdir.path().join("file1.txt");
+        let file2 = tmpdir.path().join("file2.txt");
+
+        write(&file1, "content").unwrap();
+        write(&file2, "content").unwrap();
+
+        assert!(same_file(&file1, &file1).unwrap());
+        assert!(!same_file(&file1, &file2).unwrap());
+    }
+
+    #[test]
+    fn test_canonicalize() {
+        let path = canonicalize(".").unwrap();
+        assert!(path.is_absolute());
+    }
+
+    #[test]
+    fn test_modified_time() {
+        let tmpdir = test::tempdir();
+        let path = tmpdir.path().join("mtime_test.txt");
+        write(&path, "content").unwrap();
+
+        let mtime = modified_time(&path).unwrap();
+        assert!(mtime.as_secs() > 0);
     }
 }

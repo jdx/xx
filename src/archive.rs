@@ -1,4 +1,31 @@
-/// Archive file handling functions.
+//! Archive file handling functions.
+//!
+//! This module provides functions for extracting and inspecting archive files.
+//!
+//! ## Features
+//!
+//! - `archive_untar_gzip`: Extract .tar.gz files
+//! - `archive_untar_bzip2`: Extract .tar.bz2 files
+//! - `archive_untar_xz`: Extract .tar.xz files
+//! - `archive_unzip`: Extract .zip files
+//! - `archive_ungz`: Decompress .gz files
+//!
+//! ## Examples
+//!
+//! ```rust,no_run
+//! use xx::archive;
+//! use std::path::Path;
+//!
+//! // Extract a tar.gz archive
+//! archive::untar_gz(Path::new("archive.tar.gz"), Path::new("/tmp/dest")).unwrap();
+//!
+//! // List contents of a zip file
+//! let entries = archive::list_zip(Path::new("archive.zip")).unwrap();
+//! for entry in entries {
+//!     println!("{}", entry.path);
+//! }
+//! ```
+
 use std::path::Path;
 
 use crate::{XXError, XXResult, file};
@@ -77,6 +104,136 @@ pub fn unzip(archive: &Path, destination: &Path) -> XXResult<()> {
         }
     }
     Ok(())
+}
+
+/// Information about an archive entry
+#[derive(Debug, Clone)]
+pub struct ArchiveEntry {
+    /// Path within the archive
+    pub path: String,
+    /// Size in bytes (uncompressed)
+    pub size: u64,
+    /// Whether this is a directory
+    pub is_dir: bool,
+    /// Whether this is a symbolic link
+    pub is_symlink: bool,
+    /// Unix mode if available
+    #[cfg(unix)]
+    pub mode: Option<u32>,
+}
+
+/// List contents of a tar.gz archive without extracting
+#[cfg(feature = "archive_untar_gzip")]
+pub fn list_tar_gz(archive: &Path) -> XXResult<Vec<ArchiveEntry>> {
+    let file = file::open(archive)?;
+    let decoder = flate2::read::GzDecoder::new(file);
+    list_tar_inner(decoder, archive)
+}
+
+/// List contents of a tar.bz2 archive without extracting
+#[cfg(feature = "archive_untar_bzip2")]
+pub fn list_tar_bz2(archive: &Path) -> XXResult<Vec<ArchiveEntry>> {
+    let file = file::open(archive)?;
+    let decoder = bzip2::read::BzDecoder::new(file);
+    list_tar_inner(decoder, archive)
+}
+
+/// List contents of a tar.xz archive without extracting
+#[cfg(feature = "archive_untar_xz")]
+pub fn list_tar_xz(archive: &Path) -> XXResult<Vec<ArchiveEntry>> {
+    let file = file::open(archive)?;
+    let decoder = xz2::read::XzDecoder::new(file);
+    list_tar_inner(decoder, archive)
+}
+
+#[cfg(any(
+    feature = "archive_untar_gzip",
+    feature = "archive_untar_bzip2",
+    feature = "archive_untar_xz"
+))]
+fn list_tar_inner<R: std::io::Read>(reader: R, archive: &Path) -> XXResult<Vec<ArchiveEntry>> {
+    let mut a = tar::Archive::new(reader);
+    let mut entries = Vec::new();
+
+    for entry in a
+        .entries()
+        .map_err(|err| XXError::ArchiveIOError(err, archive.to_path_buf()))?
+    {
+        let entry = entry.map_err(|err| XXError::ArchiveIOError(err, archive.to_path_buf()))?;
+        let header = entry.header();
+
+        let path = entry
+            .path()
+            .map_err(|err| XXError::ArchiveIOError(err, archive.to_path_buf()))?
+            .to_string_lossy()
+            .to_string();
+
+        entries.push(ArchiveEntry {
+            path,
+            size: header.size().unwrap_or(0),
+            is_dir: header.entry_type().is_dir(),
+            is_symlink: header.entry_type().is_symlink(),
+            #[cfg(unix)]
+            mode: header.mode().ok(),
+        });
+    }
+
+    Ok(entries)
+}
+
+/// List contents of a zip archive without extracting
+#[cfg(feature = "archive_unzip")]
+pub fn list_zip(archive: &Path) -> XXResult<Vec<ArchiveEntry>> {
+    let file = file::open(archive)?;
+    let mut a = zip::ZipArchive::new(file)
+        .map_err(|err| XXError::ArchiveZipError(err, archive.to_path_buf()))?;
+
+    let mut entries = Vec::new();
+
+    for i in 0..a.len() {
+        let file = a
+            .by_index(i)
+            .map_err(|err| XXError::ArchiveZipError(err, archive.to_path_buf()))?;
+
+        entries.push(ArchiveEntry {
+            path: file.name().to_string(),
+            size: file.size(),
+            is_dir: file.is_dir(),
+            is_symlink: file.is_symlink(),
+            #[cfg(unix)]
+            mode: file.unix_mode(),
+        });
+    }
+
+    Ok(entries)
+}
+
+/// Check if an archive contains a single top-level directory
+///
+/// This is useful for detecting archives that need component stripping during extraction.
+#[cfg(any(
+    feature = "archive_untar_gzip",
+    feature = "archive_untar_bzip2",
+    feature = "archive_untar_xz",
+    feature = "archive_unzip"
+))]
+pub fn has_single_root_dir(entries: &[ArchiveEntry]) -> Option<String> {
+    let mut roots = std::collections::HashSet::new();
+
+    for entry in entries {
+        // Get the first path component
+        if let Some(root) = entry.path.split('/').next() {
+            if !root.is_empty() {
+                roots.insert(root.to_string());
+            }
+        }
+    }
+
+    if roots.len() == 1 {
+        roots.into_iter().next()
+    } else {
+        None
+    }
 }
 
 #[cfg(test)]
@@ -179,5 +336,35 @@ mod tests {
         // Clean up
         fs::remove_file(&archive_path).unwrap();
         fs::remove_file(&destination_path).unwrap();
+    }
+
+    #[cfg(feature = "archive_untar_gzip")]
+    #[test]
+    fn test_list_tar_gz() {
+        let archive = Path::new(env!("CARGO_MANIFEST_DIR")).join("test/data/foo.tar.gz");
+        let entries = list_tar_gz(&archive).unwrap();
+        assert!(!entries.is_empty());
+        // Should contain the test file
+        assert!(entries.iter().any(|e| e.path.contains("test.txt")));
+    }
+
+    #[cfg(feature = "archive_unzip")]
+    #[test]
+    fn test_list_zip() {
+        let archive = Path::new(env!("CARGO_MANIFEST_DIR")).join("test/data/foo.zip");
+        let entries = list_zip(&archive).unwrap();
+        assert!(!entries.is_empty());
+        // Should contain the test file
+        assert!(entries.iter().any(|e| e.path.contains("test.txt")));
+    }
+
+    #[cfg(feature = "archive_untar_gzip")]
+    #[test]
+    fn test_has_single_root_dir() {
+        let archive = Path::new(env!("CARGO_MANIFEST_DIR")).join("test/data/foo.tar.gz");
+        let entries = list_tar_gz(&archive).unwrap();
+        let root = has_single_root_dir(&entries);
+        assert!(root.is_some());
+        assert_eq!(root.unwrap(), "foo");
     }
 }
