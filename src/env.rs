@@ -1,7 +1,7 @@
 //! Environment variable utilities
 //!
 //! This module provides convenient functions for working with environment variables,
-//! including parsing boolean values, paths, and numeric types.
+//! including parsing boolean values, paths, numeric types, and more.
 //!
 //! ## Examples
 //!
@@ -12,17 +12,27 @@
 //! unsafe { std::env::set_var("DEBUG", "1"); }
 //! assert!(env::var_is_true("DEBUG"));
 //!
-//! // Parse a path with tilde expansion  
+//! // Parse a path with tilde expansion
 //! unsafe { std::env::set_var("CONFIG_PATH", "~/config"); }
 //! let path = env::var_path("CONFIG_PATH");
 //!
 //! // Parse numeric values
 //! unsafe { std::env::set_var("THREADS", "4"); }
 //! let threads = env::var_u32("THREADS").unwrap_or(1);
+//!
+//! // Parse comma-separated values
+//! unsafe { std::env::set_var("TAGS", "a,b,c"); }
+//! let tags = env::var_csv("TAGS");
+//! assert_eq!(tags, vec!["a", "b", "c"]);
+//!
+//! // Parse durations
+//! unsafe { std::env::set_var("TIMEOUT", "30s"); }
+//! let timeout = env::var_duration("TIMEOUT");
 //! ```
 
 use std::env;
 use std::path::PathBuf;
+use std::time::Duration;
 
 /// Check if an environment variable is set to a truthy value
 ///
@@ -171,6 +181,193 @@ pub fn var_i64<K: AsRef<str>>(key: K) -> Option<i64> {
     env::var(key.as_ref()).ok().and_then(|val| val.parse().ok())
 }
 
+/// Parse an environment variable as a usize
+///
+/// # Example
+/// ```
+/// use xx::env;
+/// unsafe { std::env::set_var("COUNT", "100"); }
+/// assert_eq!(env::var_usize("COUNT"), Some(100));
+/// ```
+pub fn var_usize<K: AsRef<str>>(key: K) -> Option<usize> {
+    env::var(key.as_ref()).ok().and_then(|val| val.parse().ok())
+}
+
+/// Parse an environment variable as comma-separated values
+///
+/// Returns an empty vector if the variable is not set.
+/// Whitespace around values is trimmed.
+///
+/// # Example
+/// ```
+/// use xx::env;
+/// unsafe { std::env::set_var("TAGS", "foo, bar, baz"); }
+/// assert_eq!(env::var_csv("TAGS"), vec!["foo", "bar", "baz"]);
+///
+/// // Returns empty vec if not set
+/// assert_eq!(env::var_csv("NONEXISTENT_CSV_VAR"), Vec::<String>::new());
+/// ```
+pub fn var_csv<K: AsRef<str>>(key: K) -> Vec<String> {
+    env::var(key.as_ref())
+        .ok()
+        .map(|val| {
+            val.split(',')
+                .map(|s| s.trim().to_string())
+                .filter(|s| !s.is_empty())
+                .collect()
+        })
+        .unwrap_or_default()
+}
+
+/// Parse an environment variable as a Duration
+///
+/// Supports formats like:
+/// - "30" or "30s" - seconds
+/// - "5m" - minutes
+/// - "2h" - hours
+/// - "1d" - days
+/// - "100ms" - milliseconds
+///
+/// # Example
+/// ```
+/// use xx::env;
+/// use std::time::Duration;
+///
+/// unsafe { std::env::set_var("TIMEOUT", "30s"); }
+/// assert_eq!(env::var_duration("TIMEOUT"), Some(Duration::from_secs(30)));
+///
+/// unsafe { std::env::set_var("INTERVAL", "5m"); }
+/// assert_eq!(env::var_duration("INTERVAL"), Some(Duration::from_secs(300)));
+///
+/// unsafe { std::env::set_var("DELAY", "100ms"); }
+/// assert_eq!(env::var_duration("DELAY"), Some(Duration::from_millis(100)));
+/// ```
+pub fn var_duration<K: AsRef<str>>(key: K) -> Option<Duration> {
+    env::var(key.as_ref())
+        .ok()
+        .and_then(|val| parse_duration(&val))
+}
+
+/// Parse a duration string into a Duration
+///
+/// Supports formats like "30s", "5m", "2h", "1d", "100ms"
+pub fn parse_duration(s: &str) -> Option<Duration> {
+    let s = s.trim();
+    if s.is_empty() {
+        return None;
+    }
+
+    // Try to find where the number ends and the unit begins
+    let (num_str, unit) = if let Some(stripped) = s.strip_suffix("ms") {
+        (stripped, "ms")
+    } else if let Some(stripped) = s.strip_suffix('s') {
+        (stripped, "s")
+    } else if let Some(stripped) = s.strip_suffix('m') {
+        (stripped, "m")
+    } else if let Some(stripped) = s.strip_suffix('h') {
+        (stripped, "h")
+    } else if let Some(stripped) = s.strip_suffix('d') {
+        (stripped, "d")
+    } else {
+        // Assume seconds if no unit
+        (s, "s")
+    };
+
+    let num: u64 = num_str.trim().parse().ok()?;
+
+    Some(match unit {
+        "ms" => Duration::from_millis(num),
+        "s" => Duration::from_secs(num),
+        "m" => Duration::from_secs(num * 60),
+        "h" => Duration::from_secs(num * 60 * 60),
+        "d" => Duration::from_secs(num * 60 * 60 * 24),
+        _ => return None,
+    })
+}
+
+/// Parse an environment variable as a log level
+///
+/// Supported values (case-insensitive):
+/// - "trace", "5"
+/// - "debug", "4"
+/// - "info", "3"
+/// - "warn", "warning", "2"
+/// - "error", "1"
+/// - "off", "0", "none"
+///
+/// # Example
+/// ```
+/// use xx::env;
+/// use log::LevelFilter;
+///
+/// unsafe { std::env::set_var("LOG_LEVEL", "debug"); }
+/// assert_eq!(env::var_log_level("LOG_LEVEL"), Some(LevelFilter::Debug));
+///
+/// unsafe { std::env::set_var("LOG_LEVEL", "warn"); }
+/// assert_eq!(env::var_log_level("LOG_LEVEL"), Some(LevelFilter::Warn));
+/// ```
+pub fn var_log_level<K: AsRef<str>>(key: K) -> Option<log::LevelFilter> {
+    env::var(key.as_ref())
+        .ok()
+        .and_then(|val| parse_log_level(&val))
+}
+
+/// Parse a string into a log level
+pub fn parse_log_level(s: &str) -> Option<log::LevelFilter> {
+    let s = s.trim().to_lowercase();
+    Some(match s.as_str() {
+        "trace" | "5" => log::LevelFilter::Trace,
+        "debug" | "4" => log::LevelFilter::Debug,
+        "info" | "3" => log::LevelFilter::Info,
+        "warn" | "warning" | "2" => log::LevelFilter::Warn,
+        "error" | "1" => log::LevelFilter::Error,
+        "off" | "0" | "none" => log::LevelFilter::Off,
+        _ => return None,
+    })
+}
+
+/// Get an environment variable or return a default value
+///
+/// # Example
+/// ```
+/// use xx::env;
+///
+/// // Returns default if not set
+/// let val = env::var_or("NONEXISTENT_VAR", "default");
+/// assert_eq!(val, "default");
+///
+/// // Returns value if set
+/// unsafe { std::env::set_var("MY_VAR", "custom"); }
+/// let val = env::var_or("MY_VAR", "default");
+/// assert_eq!(val, "custom");
+/// ```
+pub fn var_or<K: AsRef<str>>(key: K, default: &str) -> String {
+    env::var(key.as_ref()).unwrap_or_else(|_| default.to_string())
+}
+
+/// Get an environment variable as a PathBuf or return a default
+///
+/// Supports tilde expansion for home directory.
+///
+/// # Example
+/// ```
+/// use xx::env;
+/// use std::path::PathBuf;
+///
+/// let path = env::var_path_or("NONEXISTENT_PATH", "~/.config");
+/// // Returns expanded default path
+/// ```
+pub fn var_path_or<K: AsRef<str>>(key: K, default: &str) -> PathBuf {
+    var_path(key).unwrap_or_else(|| {
+        if let Some(stripped) = default.strip_prefix("~/")
+            && let Some(home) = homedir::my_home().ok().flatten()
+        {
+            return home.join(stripped);
+        }
+        PathBuf::from(default)
+    })
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -298,5 +495,129 @@ mod tests {
             env::set_var("TEST_INVALID", "not_a_number");
         }
         assert_eq!(var_u32("TEST_INVALID"), None);
+    }
+
+    #[test]
+    fn test_var_csv() {
+        let _guard = TEST_MUTEX.lock().unwrap();
+
+        unsafe {
+            env::set_var("TEST_CSV", "a, b, c");
+        }
+        assert_eq!(var_csv("TEST_CSV"), vec!["a", "b", "c"]);
+
+        unsafe {
+            env::set_var("TEST_CSV_SINGLE", "single");
+        }
+        assert_eq!(var_csv("TEST_CSV_SINGLE"), vec!["single"]);
+
+        unsafe {
+            env::set_var("TEST_CSV_EMPTY", "");
+        }
+        assert!(var_csv("TEST_CSV_EMPTY").is_empty());
+
+        assert!(var_csv("NONEXISTENT_CSV_VAR").is_empty());
+    }
+
+    #[test]
+    fn test_var_duration() {
+        let _guard = TEST_MUTEX.lock().unwrap();
+        use std::time::Duration;
+
+        unsafe {
+            env::set_var("TEST_DUR_SEC", "30s");
+        }
+        assert_eq!(var_duration("TEST_DUR_SEC"), Some(Duration::from_secs(30)));
+
+        unsafe {
+            env::set_var("TEST_DUR_MIN", "5m");
+        }
+        assert_eq!(var_duration("TEST_DUR_MIN"), Some(Duration::from_secs(300)));
+
+        unsafe {
+            env::set_var("TEST_DUR_HOUR", "2h");
+        }
+        assert_eq!(
+            var_duration("TEST_DUR_HOUR"),
+            Some(Duration::from_secs(7200))
+        );
+
+        unsafe {
+            env::set_var("TEST_DUR_DAY", "1d");
+        }
+        assert_eq!(
+            var_duration("TEST_DUR_DAY"),
+            Some(Duration::from_secs(86400))
+        );
+
+        unsafe {
+            env::set_var("TEST_DUR_MS", "100ms");
+        }
+        assert_eq!(
+            var_duration("TEST_DUR_MS"),
+            Some(Duration::from_millis(100))
+        );
+
+        unsafe {
+            env::set_var("TEST_DUR_BARE", "60");
+        }
+        assert_eq!(var_duration("TEST_DUR_BARE"), Some(Duration::from_secs(60)));
+
+        assert_eq!(var_duration("NONEXISTENT_DUR_VAR"), None);
+    }
+
+    #[test]
+    fn test_var_log_level() {
+        let _guard = TEST_MUTEX.lock().unwrap();
+        use log::LevelFilter;
+
+        unsafe {
+            env::set_var("TEST_LOG_TRACE", "trace");
+        }
+        assert_eq!(var_log_level("TEST_LOG_TRACE"), Some(LevelFilter::Trace));
+
+        unsafe {
+            env::set_var("TEST_LOG_DEBUG", "DEBUG");
+        }
+        assert_eq!(var_log_level("TEST_LOG_DEBUG"), Some(LevelFilter::Debug));
+
+        unsafe {
+            env::set_var("TEST_LOG_INFO", "info");
+        }
+        assert_eq!(var_log_level("TEST_LOG_INFO"), Some(LevelFilter::Info));
+
+        unsafe {
+            env::set_var("TEST_LOG_WARN", "warning");
+        }
+        assert_eq!(var_log_level("TEST_LOG_WARN"), Some(LevelFilter::Warn));
+
+        unsafe {
+            env::set_var("TEST_LOG_ERROR", "error");
+        }
+        assert_eq!(var_log_level("TEST_LOG_ERROR"), Some(LevelFilter::Error));
+
+        unsafe {
+            env::set_var("TEST_LOG_OFF", "off");
+        }
+        assert_eq!(var_log_level("TEST_LOG_OFF"), Some(LevelFilter::Off));
+
+        unsafe {
+            env::set_var("TEST_LOG_NUM", "4");
+        }
+        assert_eq!(var_log_level("TEST_LOG_NUM"), Some(LevelFilter::Debug));
+
+        assert_eq!(var_log_level("NONEXISTENT_LOG_VAR"), None);
+    }
+
+    #[test]
+    fn test_var_or() {
+        let _guard = TEST_MUTEX.lock().unwrap();
+
+        assert_eq!(var_or("NONEXISTENT_VAR_OR", "default"), "default");
+
+        unsafe {
+            env::set_var("TEST_VAR_OR", "custom");
+        }
+        assert_eq!(var_or("TEST_VAR_OR", "default"), "custom");
     }
 }

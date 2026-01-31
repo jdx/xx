@@ -99,6 +99,9 @@ extern crate log;
 #[macro_use]
 pub use error::{XXError, XXResult};
 
+/// Cache management utilities (requires `cache` feature)
+#[cfg(feature = "cache")]
+pub mod cache;
 /// Context management utilities
 pub mod context;
 /// Environment variable parsing utilities
@@ -112,11 +115,15 @@ pub mod file;
 pub mod fslock;
 /// Git repository operations
 pub mod git;
+/// Platform detection utilities
+pub mod platform;
 /// Process execution utilities
 pub mod process;
 /// Random generation utilities
 pub mod rand;
 mod regex;
+/// String similarity and suggestion utilities
+pub mod suggest;
 
 /// Archive extraction utilities (requires one of the archive features)
 #[cfg(any(
@@ -128,7 +135,7 @@ mod regex;
 ))]
 pub mod archive;
 
-/// SHA256 hashing utilities (requires `hash` feature)
+/// Hashing utilities (requires `hash` feature)
 #[cfg(feature = "hash")]
 pub mod hash;
 /// HTTP client functionality (requires `http` feature)

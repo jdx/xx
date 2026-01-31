@@ -1,3 +1,29 @@
+//! Hash utilities
+//!
+//! This module provides hashing functions for files and data.
+//!
+//! ## Features
+//!
+//! - `hash` (default): SHA256 and SHA512 support
+//! - `hash_md5`: MD5 support (legacy, not recommended for security)
+//! - `hash_sha1`: SHA1 support (legacy, not recommended for security)
+//! - `hash_blake3`: Blake3 support (fast, modern)
+//!
+//! ## Examples
+//!
+//! ```rust,no_run
+//! use xx::hash;
+//! use std::path::Path;
+//!
+//! // Hash a file
+//! let hash = hash::file_hash_sha256(Path::new("Cargo.toml")).unwrap();
+//! println!("SHA256: {}", hash);
+//!
+//! // Hash bytes
+//! let hash = hash::sha256(b"hello world");
+//! println!("SHA256: {}", hash);
+//! ```
+
 use std::collections::HashMap;
 use std::collections::hash_map::DefaultHasher;
 use std::hash::{Hash, Hasher};
@@ -159,6 +185,186 @@ pub fn parse_shasums(text: &str) -> HashMap<String, String> {
         .collect()
 }
 
+/// Calculate the SHA256 hash of bytes
+///
+/// # Example
+/// ```
+/// use xx::hash::sha256;
+/// let hash = sha256(b"hello world");
+/// assert_eq!(hash, "b94d27b9934d3e08a52e52d7da7dabfac484efe37a5380ee9088f7ace2efcde9");
+/// ```
+pub fn sha256(data: &[u8]) -> String {
+    let mut hasher = sha2::Sha256::new();
+    hasher.update(data);
+    format!("{:x}", hasher.finalize())
+}
+
+/// Calculate the SHA512 hash of bytes
+///
+/// # Example
+/// ```
+/// use xx::hash::sha512;
+/// let hash = sha512(b"hello world");
+/// ```
+pub fn sha512(data: &[u8]) -> String {
+    let mut hasher = sha2::Sha512::new();
+    hasher.update(data);
+    format!("{:x}", hasher.finalize())
+}
+
+// MD5 support (feature-gated)
+#[cfg(feature = "hash_md5")]
+/// Calculate the MD5 hash of a file
+///
+/// **Note**: MD5 is cryptographically broken and should not be used for security purposes.
+/// It's included for compatibility with legacy systems.
+///
+/// # Example
+/// ```
+/// use std::path::Path;
+/// use xx::hash::file_hash_md5;
+/// let hash = file_hash_md5(Path::new("test/data/foo.txt")).unwrap();
+/// ```
+pub fn file_hash_md5(path: impl AsRef<Path>) -> XXResult<String> {
+    let path = path.as_ref();
+    debug!("Calculating MD5 checksum for {}", display_path(path));
+    let mut file = file::open(path)?;
+    let mut hasher = md5::Md5::new();
+    let mut buf = [0; 32 * 1024];
+    loop {
+        let n = file
+            .read(&mut buf)
+            .map_err(|err| XXError::FileError(err, path.to_path_buf()))?;
+        if n == 0 {
+            break;
+        }
+        hasher.update(&buf[..n]);
+    }
+    Ok(format!("{:x}", hasher.finalize()))
+}
+
+#[cfg(feature = "hash_md5")]
+/// Calculate the MD5 hash of bytes
+///
+/// **Note**: MD5 is cryptographically broken and should not be used for security purposes.
+///
+/// # Example
+/// ```
+/// use xx::hash::md5;
+/// let hash = md5(b"hello world");
+/// ```
+pub fn md5(data: &[u8]) -> String {
+    use md5::Digest;
+    let mut hasher = md5::Md5::new();
+    hasher.update(data);
+    format!("{:x}", hasher.finalize())
+}
+
+// SHA1 support (feature-gated)
+#[cfg(feature = "hash_sha1")]
+/// Calculate the SHA1 hash of a file
+///
+/// **Note**: SHA1 is cryptographically weak and should not be used for security purposes.
+/// It's included for compatibility with systems like Git.
+///
+/// # Example
+/// ```
+/// use std::path::Path;
+/// use xx::hash::file_hash_sha1;
+/// let hash = file_hash_sha1(Path::new("test/data/foo.txt")).unwrap();
+/// ```
+pub fn file_hash_sha1(path: impl AsRef<Path>) -> XXResult<String> {
+    let path = path.as_ref();
+    debug!("Calculating SHA1 checksum for {}", display_path(path));
+    let mut file = file::open(path)?;
+    let mut hasher = sha1::Sha1::new();
+    let mut buf = [0; 32 * 1024];
+    loop {
+        let n = file
+            .read(&mut buf)
+            .map_err(|err| XXError::FileError(err, path.to_path_buf()))?;
+        if n == 0 {
+            break;
+        }
+        hasher.update(&buf[..n]);
+    }
+    Ok(format!("{:x}", hasher.finalize()))
+}
+
+#[cfg(feature = "hash_sha1")]
+/// Calculate the SHA1 hash of bytes
+///
+/// **Note**: SHA1 is cryptographically weak and should not be used for security purposes.
+///
+/// # Example
+/// ```
+/// use xx::hash::sha1;
+/// let hash = sha1(b"hello world");
+/// ```
+pub fn sha1(data: &[u8]) -> String {
+    use sha1::Digest;
+    let mut hasher = sha1::Sha1::new();
+    hasher.update(data);
+    format!("{:x}", hasher.finalize())
+}
+
+// Blake3 support (feature-gated)
+#[cfg(feature = "hash_blake3")]
+/// Calculate the Blake3 hash of a file
+///
+/// Blake3 is a modern, fast cryptographic hash function.
+///
+/// # Example
+/// ```
+/// use std::path::Path;
+/// use xx::hash::file_hash_blake3;
+/// let hash = file_hash_blake3(Path::new("test/data/foo.txt")).unwrap();
+/// ```
+pub fn file_hash_blake3(path: impl AsRef<Path>) -> XXResult<String> {
+    let path = path.as_ref();
+    debug!("Calculating Blake3 checksum for {}", display_path(path));
+    let mut file = file::open(path)?;
+    let mut hasher = blake3::Hasher::new();
+    let mut buf = [0; 32 * 1024];
+    loop {
+        let n = file
+            .read(&mut buf)
+            .map_err(|err| XXError::FileError(err, path.to_path_buf()))?;
+        if n == 0 {
+            break;
+        }
+        hasher.update(&buf[..n]);
+    }
+    Ok(hasher.finalize().to_hex().to_string())
+}
+
+#[cfg(feature = "hash_blake3")]
+/// Calculate the Blake3 hash of bytes
+///
+/// Blake3 is a modern, fast cryptographic hash function.
+///
+/// # Example
+/// ```
+/// use xx::hash::blake3;
+/// let hash = blake3(b"hello world");
+/// ```
+pub fn blake3(data: &[u8]) -> String {
+    blake3::hash(data).to_hex().to_string()
+}
+
+#[cfg(feature = "hash_blake3")]
+/// Ensure that a file has a specific Blake3 checksum
+pub fn ensure_checksum_blake3(path: &Path, checksum: &str) -> XXResult<()> {
+    let actual = file_hash_blake3(path)?;
+    if actual != checksum {
+        bail!(
+            "Checksum mismatch for file {}:\nExpected: {checksum}\nActual:   {actual}",
+            display_path(path),
+        );
+    }
+    Ok(())
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -174,5 +380,44 @@ mod tests {
         tmp.as_file().write_all(b"Hello, world!").unwrap();
         let hash = file_hash_sha256(tmp.path()).unwrap();
         insta::assert_snapshot!(hash, @"315f5bdb76d078c43b8ac0064e4a0164612b1fce77c869345bfc94c75894edd3");
+    }
+
+    #[test]
+    fn test_sha256_bytes() {
+        let hash = sha256(b"hello world");
+        assert_eq!(
+            hash,
+            "b94d27b9934d3e08a52e52d7da7dabfac484efe37a5380ee9088f7ace2efcde9"
+        );
+    }
+
+    #[test]
+    fn test_sha512_bytes() {
+        let hash = sha512(b"hello world");
+        assert!(hash.len() == 128); // SHA512 produces 128 hex characters
+    }
+
+    #[cfg(feature = "hash_md5")]
+    #[test]
+    fn test_md5_bytes() {
+        let hash = md5(b"hello world");
+        assert_eq!(hash, "5eb63bbbe01eeed093cb22bb8f5acdc3");
+    }
+
+    #[cfg(feature = "hash_sha1")]
+    #[test]
+    fn test_sha1_bytes() {
+        let hash = sha1(b"hello world");
+        assert_eq!(hash, "2aae6c35c94fcfb415dbe95f408b9ce91ee846ed");
+    }
+
+    #[cfg(feature = "hash_blake3")]
+    #[test]
+    fn test_blake3_bytes() {
+        let hash = blake3(b"hello world");
+        assert_eq!(
+            hash,
+            "d74981efa70a0c880b8d8c1985d075dbcbf679b99a5f9914e5aaf96b831a9e24"
+        );
     }
 }
