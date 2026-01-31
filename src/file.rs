@@ -1115,6 +1115,35 @@ mod tests {
     }
 
     #[test]
+    fn test_read_bytes_not_found() {
+        let tmpdir = test::tempdir();
+        let path = tmpdir.path().join("nonexistent.bin");
+        let result = read(&path);
+        assert!(result.is_err());
+        let err = result.unwrap_err();
+        assert!(matches!(err, crate::XXError::FileError(_, _)));
+    }
+
+    #[test]
+    #[cfg(unix)]
+    fn test_read_bytes_no_permission() {
+        use std::os::unix::fs::PermissionsExt;
+
+        let tmpdir = test::tempdir();
+        let path = tmpdir.path().join("no_read.bin");
+        write(&path, b"secret").unwrap();
+
+        // Remove read permission
+        std::fs::set_permissions(&path, std::fs::Permissions::from_mode(0o000)).unwrap();
+
+        let result = read(&path);
+        assert!(result.is_err());
+
+        // Restore permissions for cleanup
+        std::fs::set_permissions(&path, std::fs::Permissions::from_mode(0o644)).unwrap();
+    }
+
+    #[test]
     fn test_touch_file() {
         let tmpdir = test::tempdir();
         let path = tmpdir.path().join("touch_test.txt");
