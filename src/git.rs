@@ -750,7 +750,7 @@ impl Git {
             (Some(b), Some(t)) => git_cmd!(&self.dir, "diff", "--shortstat", b, t).read(),
             (Some(b), None) => git_cmd!(&self.dir, "diff", "--shortstat", b).read(),
             (None, Some(t)) => git_cmd!(&self.dir, "diff", "--shortstat", "HEAD", t).read(),
-            (None, None) => git_cmd!(&self.dir, "diff", "--shortstat").read(),
+            (None, None) => git_cmd!(&self.dir, "diff", "--shortstat", "HEAD").read(),
         }
         .map_err(|err| XXError::GitError(err, self.dir.clone()))?;
 
