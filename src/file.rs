@@ -700,7 +700,17 @@ pub fn symlink<P: AsRef<Path>, Q: AsRef<Path>>(original: P, link: Q) -> XXResult
     if let Some(parent) = link.parent() {
         mkdirp(parent)?;
     }
-    if original.is_dir() {
+    // Determine if target is a directory:
+    // 1. Check if target exists and is a directory
+    // 2. If target doesn't exist, check if path ends with separator (indicates directory intent)
+    // 3. If target doesn't exist and has no extension, assume directory
+    let is_dir = if original.exists() {
+        original.is_dir()
+    } else {
+        let path_str = original.to_string_lossy();
+        path_str.ends_with('/') || path_str.ends_with('\\') || original.extension().is_none()
+    };
+    if is_dir {
         std::os::windows::fs::symlink_dir(original, link)
             .map_err(|err| XXError::FileError(err, link.to_path_buf()))
     } else {
@@ -901,9 +911,18 @@ pub fn same_file<P: AsRef<Path>, Q: AsRef<Path>>(path1: P, path2: Q) -> XXResult
     #[cfg(windows)]
     {
         // On Windows, we compare file indices
+        // If indices are unavailable (returns None), we can't reliably compare
         use std::os::windows::fs::MetadataExt;
-        Ok(meta1.file_index() == meta2.file_index()
-            && meta1.volume_serial_number() == meta2.volume_serial_number())
+        match (
+            meta1.file_index(),
+            meta2.file_index(),
+            meta1.volume_serial_number(),
+            meta2.volume_serial_number(),
+        ) {
+            (Some(idx1), Some(idx2), Some(vol1), Some(vol2)) => Ok(idx1 == idx2 && vol1 == vol2),
+            // If any index is unavailable, fall back to path comparison
+            _ => Ok(path1.as_ref() == path2.as_ref()),
+        }
     }
 }
 

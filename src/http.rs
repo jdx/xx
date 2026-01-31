@@ -152,7 +152,7 @@ impl Client {
         let to = to.as_ref();
         let bytes = self.get_bytes(url).await?;
 
-        file::mkdirp(to.parent().unwrap())?;
+        // file::write handles parent directory creation
         file::write(to, &bytes)?;
         Ok(())
     }
@@ -173,7 +173,8 @@ impl Client {
         for attempt in 0..=self.retries {
             if attempt > 0 {
                 // Exponential backoff: base_delay * 2^(attempt-1), capped at MAX_RETRY_DELAY
-                let delay = self.retry_delay * 2_u32.pow(attempt - 1);
+                // Use saturating_pow to prevent overflow with high retry counts
+                let delay = self.retry_delay * 2_u32.saturating_pow(attempt - 1);
                 let delay = delay.min(MAX_RETRY_DELAY);
                 trace!("Retry attempt {} for {} (delay: {:?})", attempt, url, delay);
                 tokio::time::sleep(delay).await;
