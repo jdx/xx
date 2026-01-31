@@ -169,13 +169,18 @@ impl XXExpression {
                 .spawn()
                 .map_err(|err| XXError::ProcessError(err, self.to_string()))?;
 
-            // Write stdin data if provided
-            if let Some(stdin_data) = &self.stdin_data
-                && let Some(mut stdin) = child.stdin.take()
-            {
-                use std::io::Write;
-                let _ = stdin.write_all(stdin_data);
-            }
+            // Write stdin data in a separate thread to avoid deadlock when combining
+            // large stdin with stdout/stderr handlers. Without this, if stdin data
+            // exceeds the pipe buffer (~64KB) and the child fills its stdout buffer
+            // before consuming stdin, both parent and child would block.
+            let stdin_handle = self.stdin_data.clone().and_then(|stdin_data| {
+                child.stdin.take().map(|mut stdin| {
+                    thread::spawn(move || {
+                        use std::io::Write;
+                        let _ = stdin.write_all(&stdin_data);
+                    })
+                })
+            });
 
             let mut stdout = child
                 .stdout
@@ -252,6 +257,9 @@ impl XXExpression {
                 .wait()
                 .map_err(|err| XXError::ProcessError(err, self.to_string()))?;
 
+            if let Some(h) = stdin_handle {
+                let _ = h.join();
+            }
             let _ = stdout_handle.join();
             let _ = stderr_handle.join();
 
@@ -301,13 +309,15 @@ impl XXExpression {
                 .spawn()
                 .map_err(|err| XXError::ProcessError(err, self.to_string()))?;
 
-            // Write stdin data if provided
-            if let Some(stdin_data) = &self.stdin_data
-                && let Some(mut stdin) = child.stdin.take()
-            {
-                use std::io::Write;
-                let _ = stdin.write_all(stdin_data);
-            }
+            // Write stdin data in a separate thread to avoid deadlock (see run() for details)
+            let stdin_handle = self.stdin_data.clone().and_then(|stdin_data| {
+                child.stdin.take().map(|mut stdin| {
+                    thread::spawn(move || {
+                        use std::io::Write;
+                        let _ = stdin.write_all(&stdin_data);
+                    })
+                })
+            });
 
             let mut stderr = child
                 .stderr
@@ -389,6 +399,9 @@ impl XXExpression {
             let status = child
                 .wait()
                 .map_err(|err| XXError::ProcessError(err, self.to_string()))?;
+            if let Some(h) = stdin_handle {
+                let _ = h.join();
+            }
             let _ = stderr_handle.join();
             if !self.unchecked {
                 check_status(status).map_err(|err| XXError::ProcessError(err, self.to_string()))?;

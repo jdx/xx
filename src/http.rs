@@ -29,7 +29,6 @@
 //! }
 //! ```
 
-use std::io::Cursor;
 use std::path::Path;
 use std::time::Duration;
 
@@ -272,7 +271,7 @@ pub async fn get_bytes(url: impl IntoUrl) -> XXResult<Vec<u8>> {
 
 /// Download a file from a URL
 ///
-/// This is a convenience function that uses default settings.
+/// This is a convenience function that uses default settings (including retries).
 /// For more control, use `Client::new()`.
 ///
 /// # Arguments
@@ -290,42 +289,8 @@ pub async fn get_bytes(url: impl IntoUrl) -> XXResult<Vec<u8>> {
 ///     download("https://postman-echo.com/get", "/tmp/test.txt").await.unwrap();
 /// }
 /// ```
-pub async fn download(url: impl IntoUrl, to: impl AsRef<Path>) -> XXResult<XXHTTPResponse> {
-    let url_clone = url.into_url().map_err(|err| error!("url error: {}", err))?;
-    let to = to.as_ref();
-
-    // Get response for headers
-    let client = reqwest::Client::builder()
-        .timeout(DEFAULT_TIMEOUT)
-        .build()
-        .map_err(|err| error!("Failed to build client: {}", err))?;
-
-    let resp = client
-        .get(url_clone.clone())
-        .send()
-        .await
-        .map_err(|err| XXError::HTTPError(err, url_clone.to_string()))?;
-
-    resp.error_for_status_ref()
-        .map_err(|err| XXError::HTTPError(err, url_clone.to_string()))?;
-
-    let out = XXHTTPResponse {
-        status: resp.status(),
-        headers: resp.headers().clone(),
-        body: "".to_string(),
-    };
-
-    file::mkdirp(to.parent().unwrap())?;
-    let mut file =
-        std::fs::File::create(to).map_err(|err| XXError::FileError(err, to.to_path_buf()))?;
-    let mut content = Cursor::new(
-        resp.bytes()
-            .await
-            .map_err(|err| XXError::HTTPError(err, url_clone.to_string()))?,
-    );
-    std::io::copy(&mut content, &mut file)
-        .map_err(|err| XXError::FileError(err, to.to_path_buf()))?;
-    Ok(out)
+pub async fn download(url: impl IntoUrl, to: impl AsRef<Path>) -> XXResult<()> {
+    Client::new().download(url, to).await
 }
 
 #[cfg(test)]
@@ -370,12 +335,9 @@ mod tests {
         let mock_server = setup_mock_server().await;
         let tmp = tempfile::tempdir().unwrap();
         let file = tmp.path().join("test.txt");
-        let resp = download(format!("{}/get", mock_server.uri()), &file)
+        download(format!("{}/get", mock_server.uri()), &file)
             .await
             .unwrap();
-        assert_eq!(resp.status, reqwest::StatusCode::OK);
-        assert_eq!(resp.body, "");
-        assert!(resp.headers.contains_key("Date"));
         let contents = std::fs::read_to_string(&file).unwrap();
         assert!(contents.contains("localhost"));
     }

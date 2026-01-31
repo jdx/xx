@@ -266,19 +266,22 @@ impl CacheManager {
                 .unwrap_or_default()
                 .as_secs();
 
-            if now - created_at >= duration.as_secs() {
+            // Use saturating_sub to handle clock adjustments gracefully
+            if now.saturating_sub(created_at) >= duration.as_secs() {
                 trace!("Cache miss (expired): {}", key);
                 return false;
             }
         }
 
-        // Check watched files
-        if let Some(stored_hash) = files_hash {
-            let current_hash = self.compute_files_hash();
-            if current_hash.as_deref() != Some(stored_hash) {
-                trace!("Cache miss (files changed): {}", key);
-                return false;
-            }
+        // Check watched files - compare current hash with stored hash
+        // Invalidate if:
+        // - stored_hash is Some but doesn't match current
+        // - stored_hash is None but current_hash is Some (files were added to watch list)
+        // - stored_hash is Some but current_hash is None (files were removed from watch list)
+        let current_hash = self.compute_files_hash();
+        if current_hash.as_deref() != files_hash {
+            trace!("Cache miss (files changed): {}", key);
+            return false;
         }
 
         true
