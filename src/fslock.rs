@@ -15,8 +15,11 @@ pub struct FSLock {
 
 impl FSLock {
     pub fn new(path: &Path) -> Self {
+        let normalized = normalize_path(path);
         Self {
-            path: env::temp_dir().join("fslock").join(hash_to_str(&path)),
+            path: env::temp_dir()
+                .join("fslock")
+                .join(hash_to_str(&normalized)),
             on_locked: None,
         }
     }
@@ -48,6 +51,16 @@ impl FSLock {
         }
         Ok(lock)
     }
+}
+
+fn normalize_path(path: &Path) -> PathBuf {
+    if let Ok(canonical) = path.canonicalize() {
+        return canonical;
+    }
+    if let Ok(absolute) = std::path::absolute(path) {
+        return absolute;
+    }
+    path.to_path_buf()
 }
 
 pub fn get(path: &Path, force: bool) -> XXResult<Option<fslock::LockFile>> {
