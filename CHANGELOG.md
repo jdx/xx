@@ -16,6 +16,13 @@
 
 - Pin homedir to 0.3.5 for MSRV compatibility
 - Cargo build
+## [2.5.2](https://github.com/jdx/xx/compare/v2.5.1...v2.5.2) (2026-02-16)
+
+
+### Bug Fixes
+
+* **fslock:** normalize path to avoid inconsistent lock ([#183](https://github.com/jdx/xx/issues/183)) ([ea26ba4](https://github.com/jdx/xx/commit/ea26ba431aedab8ebb55e318a6716fc2ded0d563))
+
 ## [2.5.1](https://github.com/jdx/xx/compare/v2.5.0...v2.5.1) (2026-01-31)
 
 
