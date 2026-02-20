@@ -16,6 +16,14 @@
 
 - Pin homedir to 0.3.5 for MSRV compatibility
 - Cargo build
+## [2.5.3](https://github.com/jdx/xx/compare/v2.5.2...v2.5.3) (2026-02-20)
+
+
+### Bug Fixes
+
+* **deps:** update rust crate rand to 0.10 ([#188](https://github.com/jdx/xx/issues/188)) ([908fac1](https://github.com/jdx/xx/commit/908fac11508af1e96d6fb3897023ea1ccc5f75ac))
+* **deps:** update rust crate zip to v8 ([#189](https://github.com/jdx/xx/issues/189)) ([7d37dc8](https://github.com/jdx/xx/commit/7d37dc8fd181a520d5ff2528d968af6f1e0d7395))
+
 ## [2.5.2](https://github.com/jdx/xx/compare/v2.5.1...v2.5.2) (2026-02-16)
 
 
