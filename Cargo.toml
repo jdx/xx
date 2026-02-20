@@ -37,7 +37,7 @@ tar = { version = "0.4", optional = true }
 thiserror = "2"
 tokio = { version = "1", optional = true, features = ["full"] }
 xz2 = { version = "0.1", optional = true, features = ["static"] }
-zip = { version = "7", optional = true }
+zip = { version = "8", optional = true }
 
 [features]
 archive = ["archive_untar_bzip2", "archive_untar_gzip", "archive_untar_xz", "archive_unzip", "archive_ungz", "archive_tar_bzip2", "archive_tar_gzip", "archive_tar_xz", "archive_zip", "archive_gz"]
