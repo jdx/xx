@@ -23,7 +23,7 @@ fslock = { version = "0.2", optional = true }
 globwalk = { version = "0.9", optional = true }
 homedir = "0.3"
 log = "0.4"
-md-5 = { version = "0.10", optional = true }
+md-5 = { version = "0.11", optional = true }
 miette = "7"
 regex = "1"
 reqwest = { version = "0.13", optional = true, default-features = false }
