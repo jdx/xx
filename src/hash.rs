@@ -36,7 +36,11 @@ use crate::file::display_path;
 use crate::{XXError, XXResult, bail, file};
 
 fn hex(bytes: &[u8]) -> String {
-    bytes.iter().map(|b| format!("{b:02x}")).collect()
+    let mut s = String::with_capacity(bytes.len() * 2);
+    for b in bytes {
+        std::fmt::Write::write_fmt(&mut s, format_args!("{b:02x}")).unwrap();
+    }
+    s
 }
 
 /// Calculate the hash of a value
