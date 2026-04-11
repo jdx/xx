@@ -23,15 +23,15 @@ fslock = { version = "0.2", optional = true }
 globwalk = { version = "0.9", optional = true }
 homedir = "0.3"
 log = "0.4"
-md-5 = { version = "0.10", optional = true }
+md-5 = { version = "0.11", optional = true }
 miette = "7"
 regex = "1"
 reqwest = { version = "0.13", optional = true, default-features = false }
 serde = { version = "1", features = ["derive"], optional = true }
 serde_json = { version = "1", optional = true }
 serde_urlencoded = { version = "0.7", optional = true }
-sha1 = { version = "0.10", optional = true }
-sha2 = { version = "0.10", optional = true }
+sha1 = { version = "0.11", optional = true }
+sha2 = { version = "0.11", optional = true }
 strsim = "0.11"
 tar = { version = "0.4", optional = true }
 thiserror = "2"
