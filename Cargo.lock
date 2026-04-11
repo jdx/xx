@@ -3377,7 +3377,7 @@ dependencies = [
 
 [[package]]
 name = "xx"
-version = "2.5.3"
+version = "2.5.4"
 dependencies = [
  "blake3",
  "bzip2",

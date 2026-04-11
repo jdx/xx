@@ -16,6 +16,13 @@
 
 - Pin homedir to 0.3.5 for MSRV compatibility
 - Cargo build
+## [2.5.4](https://github.com/jdx/xx/compare/v2.5.3...v2.5.4) (2026-04-11)
+
+
+### Bug Fixes
+
+* **deps:** update digest ecosystem crates to 0.11 ([#216](https://github.com/jdx/xx/issues/216)) ([7622f45](https://github.com/jdx/xx/commit/7622f45838130a345ff51925fe38c76eb7205172))
+
 ## [2.5.3](https://github.com/jdx/xx/compare/v2.5.2...v2.5.3) (2026-04-03)
 
 
