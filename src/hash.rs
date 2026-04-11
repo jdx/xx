@@ -27,14 +27,21 @@
 use std::collections::HashMap;
 use std::collections::hash_map::DefaultHasher;
 use std::hash::{Hash, Hasher};
-use std::io::{Read, Write};
+use std::io::Read;
 use std::path::Path;
 
 use sha2::Digest;
-use sha2::digest::Output;
 
 use crate::file::display_path;
 use crate::{XXError, XXResult, bail, file};
+
+fn hex(bytes: &[u8]) -> String {
+    let mut s = String::with_capacity(bytes.len() * 2);
+    for b in bytes {
+        std::fmt::Write::write_fmt(&mut s, format_args!("{b:02x}")).unwrap();
+    }
+    s
+}
 
 /// Calculate the hash of a value
 /// # Arguments
@@ -70,7 +77,7 @@ pub fn file_hash_sha256(path: impl AsRef<Path>) -> XXResult<String> {
     let path = path.as_ref();
     debug!("Calculating SHA256 checksum for {}", display_path(path));
     let h = file_hash::<sha2::Sha256>(path)?;
-    Ok(format!("{h:x}"))
+    Ok(hex(h.as_slice()))
 }
 
 /// Calculate the SHA512 checksum of a file
@@ -90,17 +97,14 @@ pub fn file_hash_sha512(path: impl AsRef<Path>) -> XXResult<String> {
     let path = path.as_ref();
     debug!("Calculating SHA512 checksum for {}", display_path(path));
     let h = file_hash::<sha2::Sha512>(path)?;
-    Ok(format!("{h:x}"))
+    Ok(hex(h.as_slice()))
 }
 
-pub fn file_hash<H>(path: &Path) -> XXResult<Output<H>>
+pub fn file_hash<H>(path: &Path) -> XXResult<sha2::digest::Output<H>>
 where
-    H: Digest + Write,
+    H: Digest,
 {
     let mut file = file::open(path)?;
-    // if let Some(pr) = pr {
-    //     pr.set_length(file.metadata()?.len());
-    // }
     let mut hasher = H::new();
     let mut buf = [0; 32 * 1024];
     loop {
@@ -110,15 +114,8 @@ where
         if n == 0 {
             break;
         }
-        hasher
-            .write_all(&buf[..n])
-            .map_err(|err| XXError::FileError(err, path.to_path_buf()))?;
-        // if let Some(pr) = pr {
-        //     pr.inc(n as u64);
-        // }
+        hasher.update(&buf[..n]);
     }
-    std::io::copy(&mut file, &mut hasher)
-        .map_err(|err| XXError::FileError(err, path.to_path_buf()))?;
     Ok(hasher.finalize())
 }
 
@@ -196,7 +193,7 @@ pub fn parse_shasums(text: &str) -> HashMap<String, String> {
 pub fn sha256(data: &[u8]) -> String {
     let mut hasher = sha2::Sha256::new();
     hasher.update(data);
-    format!("{:x}", hasher.finalize())
+    hex(hasher.finalize().as_slice())
 }
 
 /// Calculate the SHA512 hash of bytes
@@ -209,7 +206,7 @@ pub fn sha256(data: &[u8]) -> String {
 pub fn sha512(data: &[u8]) -> String {
     let mut hasher = sha2::Sha512::new();
     hasher.update(data);
-    format!("{:x}", hasher.finalize())
+    hex(hasher.finalize().as_slice())
 }
 
 // MD5 support (feature-gated)
@@ -240,7 +237,7 @@ pub fn file_hash_md5(path: impl AsRef<Path>) -> XXResult<String> {
         }
         hasher.update(&buf[..n]);
     }
-    Ok(format!("{:x}", hasher.finalize()))
+    Ok(hex(hasher.finalize().as_slice()))
 }
 
 #[cfg(feature = "hash_md5")]
@@ -257,7 +254,7 @@ pub fn md5(data: &[u8]) -> String {
     use md5::Digest;
     let mut hasher = md5::Md5::new();
     hasher.update(data);
-    format!("{:x}", hasher.finalize())
+    hex(hasher.finalize().as_slice())
 }
 
 // SHA1 support (feature-gated)
@@ -288,7 +285,7 @@ pub fn file_hash_sha1(path: impl AsRef<Path>) -> XXResult<String> {
         }
         hasher.update(&buf[..n]);
     }
-    Ok(format!("{:x}", hasher.finalize()))
+    Ok(hex(hasher.finalize().as_slice()))
 }
 
 #[cfg(feature = "hash_sha1")]
@@ -305,7 +302,7 @@ pub fn sha1(data: &[u8]) -> String {
     use sha1::Digest;
     let mut hasher = sha1::Sha1::new();
     hasher.update(data);
-    format!("{:x}", hasher.finalize())
+    hex(hasher.finalize().as_slice())
 }
 
 // Blake3 support (feature-gated)
@@ -367,6 +364,8 @@ pub fn ensure_checksum_blake3(path: &Path, checksum: &str) -> XXResult<()> {
 
 #[cfg(test)]
 mod tests {
+    use std::io::Write;
+
     use super::*;
 
     #[test]
