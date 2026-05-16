@@ -1,6 +1,6 @@
 tasks.build = "cargo build --all --all-features"
 tasks.build-release = "cargo build --all --all-features --release"
-tasks.format = "cargo fmt -- --all"
+tasks.format = "cargo fmt --all"
 tasks.release = "cargo release"
 tasks.clean = "cargo clean"
 
