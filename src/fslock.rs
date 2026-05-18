@@ -8,6 +8,152 @@ use crate::{XXError, file};
 
 pub type OnLockedFn = Box<dyn Fn(&Path)>;
 
+#[derive(Debug)]
+pub struct LockFile {
+    #[cfg(unix)]
+    fd: libc::c_int,
+    #[cfg(not(unix))]
+    inner: fslock::LockFile,
+    locked: bool,
+}
+
+impl LockFile {
+    #[cfg(unix)]
+    fn open(path: &Path) -> XXResult<Self> {
+        use std::os::unix::fs::{OpenOptionsExt, PermissionsExt};
+        use std::os::unix::io::IntoRawFd;
+
+        let mut opts = std::fs::OpenOptions::new();
+        opts.read(true).write(true).create(true);
+        opts.custom_flags(libc::O_CLOEXEC | libc::O_NOFOLLOW);
+
+        let file = opts
+            .open(path)
+            .map_err(|e| XXError::FSLockError(e, format!("lockfile {}", path.display())))?;
+
+        let mode = file.metadata().map(|m| m.permissions().mode()).unwrap_or(0);
+        if mode & 0o666 != 0o666 {
+            file.set_permissions(std::fs::Permissions::from_mode(0o666))
+                .unwrap_or_else(|e| {
+                    debug!(
+                        "failed to set lockfile permissions on {}: {e}",
+                        path.display()
+                    );
+                });
+        }
+
+        let fd = file.into_raw_fd();
+        Ok(Self { fd, locked: false })
+    }
+
+    #[cfg(not(unix))]
+    fn open(path: &Path) -> XXResult<Self> {
+        let inner = fslock::LockFile::open(path)
+            .map_err(|e| XXError::FSLockError(e, format!("lockfile {}", path.display())))?;
+        Ok(Self {
+            inner,
+            locked: false,
+        })
+    }
+
+    pub fn try_lock(&mut self) -> XXResult<bool> {
+        if self.locked {
+            panic!("Cannot lock if already owning a lock");
+        }
+        #[cfg(unix)]
+        loop {
+            let res = unsafe { libc::flock(self.fd, libc::LOCK_EX | libc::LOCK_NB) };
+            if res >= 0 {
+                self.locked = true;
+                return Ok(true);
+            }
+            let err = std::io::Error::last_os_error();
+            let code = err.raw_os_error().unwrap_or(0);
+            if code == libc::EINTR {
+                continue;
+            }
+            if code == libc::EWOULDBLOCK {
+                return Ok(false);
+            }
+            return Err(XXError::FSLockError(err, "flock try_lock".into()));
+        }
+        #[cfg(not(unix))]
+        {
+            self.inner
+                .try_lock()
+                .map_err(|e| XXError::FSLockError(e, "fslock try_lock".into()))
+        }
+    }
+
+    pub fn lock(&mut self) -> XXResult<()> {
+        if self.locked {
+            panic!("Cannot lock if already owning a lock");
+        }
+        #[cfg(unix)]
+        loop {
+            let res = unsafe { libc::flock(self.fd, libc::LOCK_EX) };
+            if res >= 0 {
+                self.locked = true;
+                return Ok(());
+            }
+            let err = std::io::Error::last_os_error();
+            let code = err.raw_os_error().unwrap_or(0);
+            if code == libc::EINTR {
+                continue;
+            }
+            return Err(XXError::FSLockError(err, "flock lock".into()));
+        }
+        #[cfg(not(unix))]
+        {
+            self.inner
+                .lock()
+                .map_err(|e| XXError::FSLockError(e, "fslock lock".into()))
+        }
+    }
+
+    pub fn unlock(&mut self) -> XXResult<()> {
+        if !self.locked {
+            panic!("Attempted to unlock already unlocked lockfile");
+        }
+        #[cfg(unix)]
+        {
+            let res = unsafe { libc::flock(self.fd, libc::LOCK_UN) };
+            if res < 0 {
+                return Err(XXError::FSLockError(
+                    std::io::Error::last_os_error(),
+                    "flock unlock".into(),
+                ));
+            }
+            self.locked = false;
+            if unsafe { libc::ftruncate(self.fd, 0) } < 0 {
+                debug!("failed to truncate lockfile after unlock");
+            }
+        }
+        #[cfg(not(unix))]
+        {
+            self.inner
+                .unlock()
+                .map_err(|e| XXError::FSLockError(e, "fslock unlock".into()))?;
+            self.locked = false;
+        }
+        Ok(())
+    }
+}
+
+impl Drop for LockFile {
+    fn drop(&mut self) {
+        if self.locked
+            && let Err(e) = self.unlock()
+        {
+            debug!("failed to unlock lockfile in Drop: {e}");
+        }
+        #[cfg(unix)]
+        unsafe {
+            libc::close(self.fd);
+        }
+    }
+}
+
 pub struct FSLock {
     path: PathBuf,
     on_locked: Option<OnLockedFn>,
@@ -32,25 +178,18 @@ impl FSLock {
         self
     }
 
-    pub fn lock(self) -> XXResult<fslock::LockFile> {
+    pub fn lock(self) -> XXResult<LockFile> {
         #[cfg(unix)]
         verify_no_symlink_ancestors(&self.path)?;
         if let Some(parent) = self.path.parent() {
             file::mkdirp(parent)?;
         }
-        #[cfg(unix)]
-        ensure_shared_lockfile(&self.path)?;
-        let mut lock = open_lockfile(&self.path)?;
-        if !lock
-            .try_lock()
-            .map_err(|e| XXError::FSLockError(e, format!("lockfile {}", self.path.display())))?
-        {
+        let mut lock = LockFile::open(&self.path)?;
+        if !lock.try_lock()? {
             if let Some(f) = self.on_locked {
                 f(&self.path)
             }
-            lock.lock().map_err(|e| {
-                XXError::FSLockError(e, format!("lockfile {}", self.path.display()))
-            })?;
+            lock.lock()?;
         }
         Ok(lock)
     }
@@ -66,10 +205,6 @@ fn normalize_path(path: &Path) -> PathBuf {
     path.to_path_buf()
 }
 
-/// Verify that the immediate parent directory of the lockfile path
-/// is not a symlink, preventing symlink-based redirection attacks.
-/// Only checks the fslock directory itself, not ancestors like /tmp
-/// which may legitimately be symlinks on some platforms (e.g. macOS).
 #[cfg(unix)]
 fn verify_no_symlink_ancestors(path: &Path) -> XXResult<()> {
     if let Some(parent) = path.parent()
@@ -86,79 +221,7 @@ fn verify_no_symlink_ancestors(path: &Path) -> XXResult<()> {
     Ok(())
 }
 
-/// Pre-create the lock file with shared permissions (0o666) using O_NOFOLLOW
-/// to prevent symlink redirection. Uses fd-based set_permissions to avoid
-/// TOCTOU races with path-based chmod.
-#[cfg(unix)]
-fn ensure_shared_lockfile(path: &Path) -> XXResult<()> {
-    use std::os::unix::fs::{OpenOptionsExt, PermissionsExt};
-
-    let mut opts = std::fs::OpenOptions::new();
-    opts.write(true).create_new(true).mode(0o666);
-    opts.custom_flags(libc::O_NOFOLLOW);
-
-    match opts.open(path) {
-        Ok(file) => {
-            file.set_permissions(std::fs::Permissions::from_mode(0o666))
-                .unwrap_or_else(|e| {
-                    debug!(
-                        "failed to set lockfile permissions on {}: {e}",
-                        path.display()
-                    );
-                });
-        }
-        Err(e) if e.kind() == std::io::ErrorKind::AlreadyExists => {
-            let mut opts = std::fs::OpenOptions::new();
-            opts.read(true).write(true).custom_flags(libc::O_NOFOLLOW);
-            match opts.open(path) {
-                Ok(file) => {
-                    let mode = file.metadata().map(|m| m.permissions().mode()).unwrap_or(0);
-                    if mode & 0o666 != 0o666 {
-                        file.set_permissions(std::fs::Permissions::from_mode(0o666))
-                            .unwrap_or_else(|e| {
-                                debug!(
-                                    "failed to set lockfile permissions on {}: {e}",
-                                    path.display()
-                                );
-                            });
-                    }
-                }
-                Err(e) if e.raw_os_error() == Some(libc::ELOOP) => {
-                    return Err(XXError::FSLockError(
-                        e,
-                        format!("lockfile {}", path.display()),
-                    ));
-                }
-                Err(e) => {
-                    return Err(XXError::FSLockError(
-                        e,
-                        format!("lockfile {}", path.display()),
-                    ));
-                }
-            }
-        }
-        Err(e) if e.raw_os_error() == Some(libc::ELOOP) => {
-            return Err(XXError::FSLockError(
-                e,
-                format!("lockfile {}", path.display()),
-            ));
-        }
-        Err(e) => {
-            return Err(XXError::FSLockError(
-                e,
-                format!("lockfile {}", path.display()),
-            ));
-        }
-    }
-    Ok(())
-}
-
-fn open_lockfile(path: &Path) -> XXResult<fslock::LockFile> {
-    fslock::LockFile::open(path)
-        .map_err(|e| XXError::FSLockError(e, format!("lockfile {}", path.display())))
-}
-
-pub fn get(path: &Path, force: bool) -> XXResult<Option<fslock::LockFile>> {
+pub fn get(path: &Path, force: bool) -> XXResult<Option<LockFile>> {
     let lock = if force {
         None
     } else {
