@@ -79,9 +79,14 @@ impl LockFile {
         }
         #[cfg(not(unix))]
         {
-            self.inner
+            let locked = self
+                .inner
                 .try_lock()
-                .map_err(|e| XXError::FSLockError(e, "fslock try_lock".into()))
+                .map_err(|e| XXError::FSLockError(e, "fslock try_lock".into()))?;
+            if locked {
+                self.locked = true;
+            }
+            Ok(locked)
         }
     }
 
@@ -107,7 +112,9 @@ impl LockFile {
         {
             self.inner
                 .lock()
-                .map_err(|e| XXError::FSLockError(e, "fslock lock".into()))
+                .map_err(|e| XXError::FSLockError(e, "fslock lock".into()))?;
+            self.locked = true;
+            Ok(())
         }
     }
 
