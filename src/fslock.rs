@@ -72,16 +72,16 @@ fn normalize_path(path: &Path) -> PathBuf {
 /// which may legitimately be symlinks on some platforms (e.g. macOS).
 #[cfg(unix)]
 fn verify_no_symlink_ancestors(path: &Path) -> XXResult<()> {
-    if let Some(parent) = path.parent() {
-        if parent.is_symlink() {
-            return Err(XXError::FSLockError(
-                std::io::Error::new(
-                    std::io::ErrorKind::InvalidInput,
-                    format!("parent is a symlink: {}", parent.display()),
-                ),
-                format!("lockfile {}", path.display()),
-            ));
-        }
+    if let Some(parent) = path.parent()
+        && parent.is_symlink()
+    {
+        return Err(XXError::FSLockError(
+            std::io::Error::new(
+                std::io::ErrorKind::InvalidInput,
+                format!("parent is a symlink: {}", parent.display()),
+            ),
+            format!("lockfile {}", path.display()),
+        ));
     }
     Ok(())
 }
@@ -113,7 +113,7 @@ fn ensure_shared_lockfile(path: &Path) -> XXResult<()> {
             match opts.open(path) {
                 Ok(file) => {
                     let mode = file.metadata().map(|m| m.permissions().mode()).unwrap_or(0);
-                    if mode & 0o066 != 0o066 {
+                    if mode & 0o666 != 0o666 {
                         file.set_permissions(std::fs::Permissions::from_mode(0o666))
                             .unwrap_or_else(|e| {
                                 debug!(
