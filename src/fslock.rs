@@ -33,13 +33,13 @@ impl FSLock {
     }
 
     pub fn lock(self) -> XXResult<fslock::LockFile> {
+        #[cfg(unix)]
+        verify_no_symlink_ancestors(&self.path)?;
         if let Some(parent) = self.path.parent() {
             file::mkdirp(parent)?;
-            #[cfg(unix)]
-            set_sticky_dir(parent);
         }
         #[cfg(unix)]
-        ensure_shared_lockfile(&self.path);
+        ensure_shared_lockfile(&self.path)?;
         let mut lock = open_lockfile(&self.path)?;
         if !lock
             .try_lock()
@@ -66,86 +66,96 @@ fn normalize_path(path: &Path) -> PathBuf {
     path.to_path_buf()
 }
 
-/// Set directory permissions to 0o1777 (sticky bit, like /tmp itself).
-/// Ensures all users can create lock files regardless of who created the directory.
+/// Verify that the immediate parent directory of the lockfile path
+/// is not a symlink, preventing symlink-based redirection attacks.
+/// Only checks the fslock directory itself, not ancestors like /tmp
+/// which may legitimately be symlinks on some platforms (e.g. macOS).
 #[cfg(unix)]
-fn set_sticky_dir(path: &Path) {
-    use std::os::unix::fs::PermissionsExt;
-    let mode = std::fs::metadata(path).ok().and_then(|m| {
-        let mode = m.permissions().mode();
-        (mode & 0o1777 != 0o1777).then_some(0o1777)
-    });
-    if let Some(mode) = mode {
-        if let Err(e) = std::fs::set_permissions(path, std::fs::Permissions::from_mode(mode)) {
-            debug!("failed to set sticky bit on {}: {e}", path.display());
+fn verify_no_symlink_ancestors(path: &Path) -> XXResult<()> {
+    if let Some(parent) = path.parent() {
+        if parent.is_symlink() {
+            return Err(XXError::FSLockError(
+                std::io::Error::new(
+                    std::io::ErrorKind::InvalidInput,
+                    format!("parent is a symlink: {}", parent.display()),
+                ),
+                format!("lockfile {}", path.display()),
+            ));
         }
     }
+    Ok(())
 }
 
-/// Pre-create the lock file with shared permissions (0o666) before LockFile::open.
-/// LockFile::open uses O_CREAT which respects umask -- root with umask 0o077 would
-/// create the file as 0o600, blocking non-root users. By pre-creating the file,
-/// LockFile::open finds an existing file and skips creation with umask.
+/// Pre-create the lock file with shared permissions (0o666) using O_NOFOLLOW
+/// to prevent symlink redirection. Uses fd-based set_permissions to avoid
+/// TOCTOU races with path-based chmod.
 #[cfg(unix)]
-fn ensure_shared_lockfile(path: &Path) {
+fn ensure_shared_lockfile(path: &Path) -> XXResult<()> {
     use std::os::unix::fs::{OpenOptionsExt, PermissionsExt};
 
-    let newly_created = std::fs::OpenOptions::new()
-        .write(true)
-        .create_new(true)
-        .mode(0o666)
-        .open(path)
-        .is_ok();
+    let mut opts = std::fs::OpenOptions::new();
+    opts.write(true).create_new(true).mode(0o666);
+    opts.custom_flags(libc::O_NOFOLLOW);
 
-    let needs_chmod = if newly_created {
-        // We created the file exclusively via O_EXCL -- no other process could have
-        // opened it yet. Immediately fix permissions since umask may have restricted
-        // them. The race window is limited to our own create+chmod sequence.
-        Some(0o666)
-    } else {
-        // File already exists -- ensure shared permissions.
-        // Fixes files created by root with restrictive umask in prior runs.
-        std::fs::metadata(path).ok().and_then(|m| {
-            let mode = m.permissions().mode();
-            (mode & 0o066 != 0o066).then_some(0o666)
-        })
-    };
-
-    if let Some(mode) = needs_chmod {
-        if let Err(e) = std::fs::set_permissions(path, std::fs::Permissions::from_mode(mode)) {
-            debug!(
-                "failed to set lockfile permissions on {}: {e}",
-                path.display()
-            );
+    match opts.open(path) {
+        Ok(file) => {
+            file.set_permissions(std::fs::Permissions::from_mode(0o666))
+                .unwrap_or_else(|e| {
+                    debug!(
+                        "failed to set lockfile permissions on {}: {e}",
+                        path.display()
+                    );
+                });
+        }
+        Err(e) if e.kind() == std::io::ErrorKind::AlreadyExists => {
+            let mut opts = std::fs::OpenOptions::new();
+            opts.read(true).write(true).custom_flags(libc::O_NOFOLLOW);
+            match opts.open(path) {
+                Ok(file) => {
+                    let mode = file.metadata().map(|m| m.permissions().mode()).unwrap_or(0);
+                    if mode & 0o066 != 0o066 {
+                        file.set_permissions(std::fs::Permissions::from_mode(0o666))
+                            .unwrap_or_else(|e| {
+                                debug!(
+                                    "failed to set lockfile permissions on {}: {e}",
+                                    path.display()
+                                );
+                            });
+                    }
+                }
+                Err(e) if e.raw_os_error() == Some(libc::ELOOP) => {
+                    return Err(XXError::FSLockError(
+                        e,
+                        format!("lockfile {}", path.display()),
+                    ));
+                }
+                Err(e) => {
+                    return Err(XXError::FSLockError(
+                        e,
+                        format!("lockfile {}", path.display()),
+                    ));
+                }
+            }
+        }
+        Err(e) if e.raw_os_error() == Some(libc::ELOOP) => {
+            return Err(XXError::FSLockError(
+                e,
+                format!("lockfile {}", path.display()),
+            ));
+        }
+        Err(e) => {
+            return Err(XXError::FSLockError(
+                e,
+                format!("lockfile {}", path.display()),
+            ));
         }
     }
+    Ok(())
 }
 
-/// Open the lock file with retry on PermissionDenied.
-/// Handles the remaining race where another process just created the file
-/// with umask-restricted permissions and hasn't chmod'd it yet.
 fn open_lockfile(path: &Path) -> XXResult<fslock::LockFile> {
-    let mut attempts = 0u32;
-    loop {
-        match fslock::LockFile::open(path) {
-            Ok(lock) => return Ok(lock),
-            Err(e) if e.kind() == std::io::ErrorKind::PermissionDenied && attempts < 3 => {
-                attempts += 1;
-                debug!(
-                    "permission denied opening lockfile {}, retrying ({}/3)",
-                    path.display(),
-                    attempts
-                );
-                std::thread::sleep(std::time::Duration::from_millis(50));
-            }
-            Err(e) => {
-                return Err(XXError::FSLockError(
-                    e,
-                    format!("lockfile {}", path.display()),
-                ));
-            }
-        }
-    }
+    fslock::LockFile::open(path)
+        .map_err(|e| XXError::FSLockError(e, format!("lockfile {}", path.display())))
 }
 
 pub fn get(path: &Path, force: bool) -> XXResult<Option<fslock::LockFile>> {

@@ -20,6 +20,7 @@ rand = "0.10"
 filetime = "0.2"
 flate2 = { version = "1", optional = true }
 fslock = { version = "0.2", optional = true }
+libc = { version = "0.2", optional = true }
 globwalk = { version = "0.9", optional = true }
 homedir = "0.3"
 log = "0.4"
@@ -52,7 +53,7 @@ archive_tar_xz = ["tar", "xz2"]
 archive_gz = ["flate2"]
 archive_zip = ["zip"]
 cache = ["hash", "serde", "serde_json"]
-fslock = ["dep:fslock", "hash"]
+fslock = ["dep:fslock", "dep:libc", "hash"]
 glob = ["globwalk"]
 hash = ["sha2"]
 hash_blake3 = ["blake3"]

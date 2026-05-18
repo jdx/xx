@@ -3380,6 +3380,7 @@ dependencies = [
  "globwalk",
  "homedir",
  "insta",
+ "libc",
  "log",
  "md-5",
  "miette",
