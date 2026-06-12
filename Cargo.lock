@@ -3238,6 +3238,7 @@ dependencies = [
  "filetime",
  "flate2",
  "fslock",
+ "getrandom 0.4.2",
  "globwalk",
  "homedir",
  "insta",
