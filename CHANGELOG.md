@@ -16,6 +16,18 @@
 
 - Pin homedir to 0.3.5 for MSRV compatibility
 - Cargo build
+## [2.6.0](https://github.com/jdx/xx/compare/v2.5.4...v2.6.0) (2026-06-12)
+
+
+### Features
+
+* **lock:** fix file lock permission ([#232](https://github.com/jdx/xx/issues/232)) ([bd900d8](https://github.com/jdx/xx/commit/bd900d8dc94f48f258842566d1888256effcb965))
+
+
+### Bug Fixes
+
+* support default wasm builds ([#242](https://github.com/jdx/xx/issues/242)) ([db78e49](https://github.com/jdx/xx/commit/db78e490668f1e7613659cc309e791d8a4bf01cb))
+
 ## [2.5.4](https://github.com/jdx/xx/compare/v2.5.3...v2.5.4) (2026-04-11)
 
 
