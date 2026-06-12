@@ -15,14 +15,11 @@ rust-version = "1.88"
 [dependencies]
 blake3 = { version = "1", optional = true }
 bzip2 = { version = "0.6", optional = true }
-duct = "1"
 rand = "0.10"
-filetime = "0.2"
 flate2 = { version = "1", optional = true }
 fslock = { version = "0.2", optional = true }
 libc = { version = "0.2", optional = true }
 globwalk = { version = "0.9", optional = true }
-homedir = "0.3"
 log = "0.4"
 md-5 = { version = "0.11", optional = true }
 miette = "7"
@@ -39,6 +36,14 @@ thiserror = "2"
 tokio = { version = "1", optional = true, features = ["full"] }
 xz2 = { version = "0.1", optional = true, features = ["static"] }
 zip = { version = "8", optional = true }
+
+[target.'cfg(not(all(target_family = "wasm", target_os = "unknown")))'.dependencies]
+duct = "1"
+filetime = "0.2"
+homedir = "0.3"
+
+[target.'cfg(all(target_family = "wasm", target_os = "unknown"))'.dependencies]
+getrandom = { version = "0.4", features = ["wasm_js"] }
 
 [features]
 archive = ["archive_untar_bzip2", "archive_untar_gzip", "archive_untar_xz", "archive_unzip", "archive_ungz", "archive_tar_bzip2", "archive_tar_gzip", "archive_tar_xz", "archive_zip", "archive_gz"]

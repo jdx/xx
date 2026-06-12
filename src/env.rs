@@ -34,6 +34,8 @@ use std::env;
 use std::path::PathBuf;
 use std::time::Duration;
 
+use crate::home::home_dir;
+
 /// Check if an environment variable is set to a truthy value
 ///
 /// Truthy values: "1", "true", "yes", "on" (case-insensitive)
@@ -110,7 +112,7 @@ pub fn var_option_bool<K: AsRef<str>>(key: K) -> Option<bool> {
 pub fn var_path<K: AsRef<str>>(key: K) -> Option<PathBuf> {
     env::var(key.as_ref()).ok().map(|val| {
         if let Some(stripped) = val.strip_prefix("~/") {
-            if let Some(home) = homedir::my_home().ok().flatten() {
+            if let Some(home) = home_dir() {
                 home.join(stripped)
             } else {
                 PathBuf::from(val)
@@ -360,7 +362,7 @@ pub fn var_or<K: AsRef<str>>(key: K, default: &str) -> String {
 pub fn var_path_or<K: AsRef<str>>(key: K, default: &str) -> PathBuf {
     var_path(key).unwrap_or_else(|| {
         if let Some(stripped) = default.strip_prefix("~/")
-            && let Some(home) = homedir::my_home().ok().flatten()
+            && let Some(home) = home_dir()
         {
             return home.join(stripped);
         }

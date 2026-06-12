@@ -61,6 +61,7 @@ use std::path::PathBuf;
 #[cfg(feature = "glob")]
 use globwalk::GlobWalkerBuilder;
 
+use crate::home::home_dir;
 use crate::{XXError, XXResult};
 
 pub use std::fs::*;
@@ -222,6 +223,7 @@ pub fn remove_dir_all<P: AsRef<Path>>(path: P) -> XXResult<()> {
 /// use xx::file::touch_dir;
 /// touch_dir("src").unwrap();
 /// ```
+#[cfg(not(all(target_family = "wasm", target_os = "unknown")))]
 pub fn touch_dir<P: AsRef<Path>>(dir: P) -> XXResult<()> {
     let dir = dir.as_ref().to_path_buf();
     trace!("touch {}", dir.display());
@@ -309,8 +311,10 @@ pub fn glob<P: Into<PathBuf>>(input: P) -> XXResult<Vec<PathBuf>> {
 /// display_path("/tmp/foo"); // "/tmp/foo"
 /// ```
 pub fn display_path<P: AsRef<Path>>(path: P) -> String {
-    let home = homedir::my_home().unwrap_or_default();
-    let home = home.unwrap_or("/".into()).to_string_lossy().to_string();
+    let home = home_dir()
+        .unwrap_or("/".into())
+        .to_string_lossy()
+        .to_string();
     let path = path.as_ref();
     match path.starts_with(&home) && home != "/" {
         true => path.to_string_lossy().replacen(&home, "~", 1),
@@ -594,6 +598,7 @@ pub fn read<P: AsRef<Path>>(path: P) -> XXResult<Vec<u8>> {
 /// file::touch_file(&path).unwrap();
 /// assert!(path.exists());
 /// ```
+#[cfg(not(all(target_family = "wasm", target_os = "unknown")))]
 pub fn touch_file<P: AsRef<Path>>(path: P) -> XXResult<()> {
     let path = path.as_ref();
     debug!("touch_file: {:?}", path);
@@ -921,6 +926,17 @@ pub fn same_file<P: AsRef<Path>, Q: AsRef<Path>>(path1: P, path2: Q) -> XXResult
             (Ok(c1), Ok(c2)) => Ok(c1 == c2),
             // Canonicalization can fail for other reasons (permissions, etc.)
             // Fall back to path comparison if files exist but can't be canonicalized
+            _ => Ok(path1 == path2),
+        }
+    }
+
+    #[cfg(not(any(unix, windows)))]
+    {
+        // Verify files exist first (consistent with Unix behavior).
+        fs::metadata(path1).map_err(|err| XXError::FileError(err, path1.to_path_buf()))?;
+        fs::metadata(path2).map_err(|err| XXError::FileError(err, path2.to_path_buf()))?;
+        match (fs::canonicalize(path1), fs::canonicalize(path2)) {
+            (Ok(c1), Ok(c2)) => Ok(c1 == c2),
             _ => Ok(path1 == path2),
         }
     }

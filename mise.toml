@@ -3,6 +3,7 @@ tasks.build-release = "cargo build --all --all-features --release"
 tasks.format = "cargo fmt --all"
 tasks.release = "cargo release"
 tasks.clean = "cargo clean"
+tasks.check-wasm = "rustup target add wasm32-unknown-unknown && cargo check --target wasm32-unknown-unknown && cargo check --target wasm32-unknown-unknown --features archive_untar_bzip2,archive_untar_gzip,archive_unzip,archive_ungz,archive_tar_bzip2,archive_tar_gzip,archive_zip,archive_gz,cache,glob,hash_blake3,hash_md5,hash_sha1"
 
 [tasks.lint]
 alias = "l"
@@ -15,7 +16,7 @@ run = "cargo test --all --all-features -- --nocapture"
 env = { RUST_LOG = "xx=trace" }
 
 [tasks.ci]
-depends = ["lint", "test"]
+depends = ["lint", "test", "check-wasm"]
 
 [tasks.pre-commit]
 depends = ["lint", "test"]

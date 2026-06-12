@@ -114,10 +114,13 @@ pub mod file;
 #[cfg(feature = "fslock")]
 pub mod fslock;
 /// Git repository operations
+#[cfg(not(all(target_family = "wasm", target_os = "unknown")))]
 pub mod git;
+mod home;
 /// Platform detection utilities
 pub mod platform;
 /// Process execution utilities
+#[cfg(not(all(target_family = "wasm", target_os = "unknown")))]
 pub mod process;
 /// Random generation utilities
 pub mod rand;
