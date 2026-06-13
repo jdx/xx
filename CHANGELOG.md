@@ -16,6 +16,13 @@
 
 - Pin homedir to 0.3.5 for MSRV compatibility
 - Cargo build
+## [2.6.1](https://github.com/jdx/xx/compare/v2.6.0...v2.6.1) (2026-06-13)
+
+
+### Bug Fixes
+
+* support wasm32-wasip1 builds ([#243](https://github.com/jdx/xx/issues/243)) ([b2c95fc](https://github.com/jdx/xx/commit/b2c95fc9afbd46b6871397e1f9db7b33a6e7d8a3))
+
 ## [2.6.0](https://github.com/jdx/xx/compare/v2.5.4...v2.6.0) (2026-06-12)
 
 
