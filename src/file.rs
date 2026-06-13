@@ -223,7 +223,7 @@ pub fn remove_dir_all<P: AsRef<Path>>(path: P) -> XXResult<()> {
 /// use xx::file::touch_dir;
 /// touch_dir("src").unwrap();
 /// ```
-#[cfg(not(all(target_family = "wasm", target_os = "unknown")))]
+#[cfg(not(target_family = "wasm"))]
 pub fn touch_dir<P: AsRef<Path>>(dir: P) -> XXResult<()> {
     let dir = dir.as_ref().to_path_buf();
     trace!("touch {}", dir.display());
@@ -598,7 +598,7 @@ pub fn read<P: AsRef<Path>>(path: P) -> XXResult<Vec<u8>> {
 /// file::touch_file(&path).unwrap();
 /// assert!(path.exists());
 /// ```
-#[cfg(not(all(target_family = "wasm", target_os = "unknown")))]
+#[cfg(not(target_family = "wasm"))]
 pub fn touch_file<P: AsRef<Path>>(path: P) -> XXResult<()> {
     let path = path.as_ref();
     debug!("touch_file: {:?}", path);

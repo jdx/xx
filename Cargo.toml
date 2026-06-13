@@ -37,7 +37,7 @@ tokio = { version = "1", optional = true, features = ["full"] }
 xz2 = { version = "0.1", optional = true, features = ["static"] }
 zip = { version = "8", optional = true }
 
-[target.'cfg(not(all(target_family = "wasm", target_os = "unknown")))'.dependencies]
+[target.'cfg(not(target_family = "wasm"))'.dependencies]
 duct = "1"
 filetime = "0.2"
 homedir = "0.3"
