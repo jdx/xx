@@ -2953,7 +2953,7 @@ dependencies = [
 
 [[package]]
 name = "xx"
-version = "2.6.1"
+version = "2.6.2"
 dependencies = [
  "blake3",
  "bzip2",

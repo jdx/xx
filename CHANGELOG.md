@@ -16,6 +16,13 @@
 
 - Pin homedir to 0.3.5 for MSRV compatibility
 - Cargo build
+## [2.6.2](https://github.com/jdx/xx/compare/v2.6.1...v2.6.2) (2026-09-19)
+
+
+### Bug Fixes
+
+* **fslock:** let every user create locks in the shared lock directory ([#292](https://github.com/jdx/xx/issues/292)) ([e71dea9](https://github.com/jdx/xx/commit/e71dea9a726c3240f3b7b2af6743ac1d5cb31d4e))
+
 ## [2.6.1](https://github.com/jdx/xx/compare/v2.6.0...v2.6.1) (2026-06-13)
 
 
