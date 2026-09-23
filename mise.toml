@@ -27,6 +27,6 @@ RUST_TEST_THREADS = '1'
 [tools]
 cargo-binstall = "latest"
 "cargo:cargo-llvm-cov" = "latest"
-"cargo:cargo-msrv" = "latest"
-hk = "2.0.1"
+cargo-msrv = "latest"
+hk = { version = "latest", minimum_release_age = "0s" }
 pkl = "latest"
