@@ -1,0 +1,5 @@
+ignores:
+  - rule: use-trusted-publishing
+    file: .github/workflows/release-please.yml
+    job: release-please
+    reason: crates.io trusted publishing is not configured for this crate yet, so the release uses CARGO_REGISTRY_TOKEN

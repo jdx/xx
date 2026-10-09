@@ -9,9 +9,15 @@ permissions:
   contents: write
   pull-requests: write
 
+# Never cancel a running release; a newer run waits for it instead.
+concurrency:
+  group: ${{ github.workflow }}
+  cancel-in-progress: false
+
 jobs:
   release-please:
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
       - uses: googleapis/release-please-action@45996ed1f6d02564a971a2fa1b5860e934307cf7 # v5
         id: release
@@ -19,6 +25,8 @@ jobs:
           release-type: rust
           token: ${{ secrets.RELEASE_PLEASE_TOKEN }}
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
         if: ${{ steps.release.outputs.release_created }}
       - uses: dtolnay/rust-toolchain@6bed0761d98439e5a578e2877258200ad565ba87 # stable
         if: ${{ steps.release.outputs.release_created }}
