@@ -1,0 +1,12 @@
+ignores:
+  - rule: use-trusted-publishing
+    file: .github/workflows/release-please.yml
+    job: release-please
+    reason: crates.io trusted publishing is not configured for this crate yet, so the release uses CARGO_REGISTRY_TOKEN
+  - rule: stale-action-refs
+    file: .github/workflows/release-please.yml
+    uses: dtolnay/rust-toolchain
+    reason: >-
+      dtolnay/rust-toolchain publishes its channels (stable, nightly) as
+      branches and has no tags for them, so the commit pinned for the stable
+      channel can never be a tagged release.
