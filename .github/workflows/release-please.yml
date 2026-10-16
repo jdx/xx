@@ -29,7 +29,7 @@ jobs:
         with:
           persist-credentials: false
         if: ${{ steps.release.outputs.release_created }}
-      - uses: dtolnay/rust-toolchain@686976e191b89faba57d3206551f0f330d8cb249 # stable
+      - uses: dtolnay/rust-toolchain@b725eda525362e7cf34af9a7243cac1e3f01a7ec # stable
         if: ${{ steps.release.outputs.release_created }}
       - run: cargo publish
         if: ${{ steps.release.outputs.release_created }}
