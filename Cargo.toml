@@ -35,7 +35,7 @@ tar = { version = "0.4", optional = true }
 thiserror = "2"
 tokio = { version = "1", optional = true, features = ["full"] }
 xz2 = { version = "0.1", optional = true, features = ["static"] }
-zip = { version = "8", optional = true }
+zip = { version = "9", optional = true }
 
 [target.'cfg(not(target_family = "wasm"))'.dependencies]
 duct = "1"

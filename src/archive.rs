@@ -142,7 +142,10 @@ pub fn unzip(archive: &Path, destination: &Path) -> XXResult<()> {
         let mut file = a
             .by_index(i)
             .map_err(|err| XXError::ArchiveZipError(err, archive.to_path_buf()))?;
-        let outpath = destination.join(file.name());
+        let name = file
+            .name()
+            .map_err(|err| XXError::ArchiveZipError(err, archive.to_path_buf()))?;
+        let outpath = destination.join(&*name);
         if file.is_dir() {
             file::mkdirp(&outpath)?;
         } else {
@@ -672,8 +675,13 @@ pub fn list_zip(archive: &Path) -> XXResult<Vec<ArchiveEntry>> {
             .by_index(i)
             .map_err(|err| XXError::ArchiveZipError(err, archive.to_path_buf()))?;
 
+        let name = file
+            .name()
+            .map_err(|err| XXError::ArchiveZipError(err, archive.to_path_buf()))?
+            .into_owned();
+
         entries.push(ArchiveEntry {
-            path: file.name().to_string(),
+            path: name,
             size: file.size(),
             is_dir: file.is_dir(),
             is_symlink: file.is_symlink(),
