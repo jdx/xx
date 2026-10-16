@@ -16,6 +16,13 @@
 
 - Pin homedir to 0.3.5 for MSRV compatibility
 - Cargo build
+## [2.6.3](https://github.com/jdx/xx/compare/v2.6.2...v2.6.3) (2026-10-16)
+
+
+### Bug Fixes
+
+* **deps:** bump zip to 9 (GHSA-4684-h2q9-2vcp) ([#310](https://github.com/jdx/xx/issues/310)) ([5204d5f](https://github.com/jdx/xx/commit/5204d5f78e37ba14b5be09234c8470de2c377db9))
+
 ## [2.6.2](https://github.com/jdx/xx/compare/v2.6.1...v2.6.2) (2026-09-19)
 
 
