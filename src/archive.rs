@@ -142,6 +142,11 @@ pub fn unzip(archive: &Path, destination: &Path) -> XXResult<()> {
     let file = file::open(archive)?;
     let mut a = zip::ZipArchive::new(file)
         .map_err(|err| XXError::ArchiveZipError(err, archive.to_path_buf()))?;
+    // Check the same path we will use for extraction. A trailing separator
+    // or dot component would otherwise make symlink_metadata follow a link.
+    let output_root: std::path::PathBuf = destination.components().collect();
+    check_zip_output_component(&output_root, false)
+        .map_err(|err| XXError::ArchiveIOError(err, output_root.clone()))?;
     for i in 0..a.len() {
         let mut file = a
             .by_index(i)
@@ -152,8 +157,8 @@ pub fn unzip(archive: &Path, destination: &Path) -> XXResult<()> {
                 archive.to_path_buf(),
             )
         })?;
-        let outpath = zip_output_path(destination, &name, file.is_dir())
-            .map_err(|err| XXError::ArchiveIOError(err, destination.to_path_buf()))?;
+        let outpath = zip_output_path(&output_root, &name, file.is_dir())
+            .map_err(|err| XXError::ArchiveIOError(err, output_root.clone()))?;
         if file.is_dir() {
             file::mkdirp(&outpath)?;
         } else {
@@ -183,7 +188,6 @@ fn zip_output_path(
     use std::path::Component;
 
     let mut outpath = destination.to_path_buf();
-    check_zip_output_component(&outpath, false)?;
     let mut components = name.components().peekable();
     while let Some(component) = components.next() {
         match component {
@@ -880,11 +884,37 @@ mod tests {
         let archive = Path::new(env!("CARGO_MANIFEST_DIR")).join("test/data/foo.zip");
         let tmp = tempfile::tempdir().unwrap();
         let destination = tmp.path().join("output");
-        unzip(&archive, &destination).unwrap();
+        unzip(&archive, &destination.join(".")).unwrap();
         assert_eq!(
             fs::read_to_string(destination.join("foo/test.txt")).unwrap(),
             "yep\n"
         );
+    }
+
+    #[cfg(all(feature = "archive_unzip", unix))]
+    #[test]
+    fn test_unzip_rejects_aliased_destination_link() {
+        use std::io::ErrorKind;
+        use std::os::unix::fs::symlink;
+
+        let archive = Path::new(env!("CARGO_MANIFEST_DIR")).join("test/data/foo.zip");
+        let tmp = tempfile::tempdir().unwrap();
+        let directory = tmp.path().join("real-output");
+        let link = tmp.path().join("output");
+        fs::create_dir(&directory).unwrap();
+        symlink(&directory, &link).unwrap();
+
+        for suffix in ["", "/", "/."] {
+            let mut path = link.as_os_str().to_owned();
+            path.push(suffix);
+            let err = unzip(&archive, Path::new(&path)).unwrap_err();
+            assert!(matches!(
+                err,
+                XXError::ArchiveIOError(err, ref path)
+                    if err.kind() == ErrorKind::InvalidData && path == &link
+            ));
+        }
+        assert_eq!(fs::read_dir(directory).unwrap().count(), 0);
     }
 
     #[cfg(feature = "archive_unzip")]
