@@ -132,7 +132,11 @@ pub fn untar_xz(archive: &Path, destination: &Path) -> XXResult<()> {
     Ok(())
 }
 
-/// Unzip a zip archive to a destination directory.
+/// Unzip a ZIP archive to a destination directory.
+///
+/// Entry paths must stay below the destination. Existing symbolic links in
+/// extraction paths are not followed. The caller must control the destination's
+/// ancestors and prevent concurrent changes to the extraction tree.
 #[cfg(feature = "archive_unzip")]
 pub fn unzip(archive: &Path, destination: &Path) -> XXResult<()> {
     let file = file::open(archive)?;
@@ -142,10 +146,14 @@ pub fn unzip(archive: &Path, destination: &Path) -> XXResult<()> {
         let mut file = a
             .by_index(i)
             .map_err(|err| XXError::ArchiveZipError(err, archive.to_path_buf()))?;
-        let name = file
-            .name()
-            .map_err(|err| XXError::ArchiveZipError(err, archive.to_path_buf()))?;
-        let outpath = destination.join(&*name);
+        let name = file.enclosed_name().ok_or_else(|| {
+            XXError::ArchiveZipError(
+                zip::result::ZipError::InvalidArchive("invalid extraction path".into()),
+                archive.to_path_buf(),
+            )
+        })?;
+        let outpath = zip_output_path(destination, &name, file.is_dir())
+            .map_err(|err| XXError::ArchiveIOError(err, destination.to_path_buf()))?;
         if file.is_dir() {
             file::mkdirp(&outpath)?;
         } else {
@@ -160,6 +168,79 @@ pub fn unzip(archive: &Path, destination: &Path) -> XXResult<()> {
             if let Some(mode) = file.unix_mode() {
                 file::chmod(&outpath, mode)?;
             }
+        }
+    }
+    Ok(())
+}
+
+#[cfg(feature = "archive_unzip")]
+fn zip_output_path(
+    destination: &Path,
+    name: &Path,
+    is_dir: bool,
+) -> std::io::Result<std::path::PathBuf> {
+    use std::io::ErrorKind;
+    use std::path::Component;
+
+    let mut outpath = destination.to_path_buf();
+    check_zip_output_component(&outpath, false)?;
+    let mut components = name.components().peekable();
+    while let Some(component) = components.next() {
+        match component {
+            Component::CurDir => continue,
+            Component::Normal(segment) => outpath.push(segment),
+            _ => {
+                return Err(std::io::Error::new(
+                    ErrorKind::InvalidData,
+                    "invalid ZIP extraction path",
+                ));
+            }
+        }
+        check_zip_output_component(&outpath, !is_dir && components.peek().is_none())?;
+    }
+    if !is_dir && outpath == destination {
+        return Err(std::io::Error::new(
+            ErrorKind::InvalidData,
+            "ZIP file entry has no filename",
+        ));
+    }
+    Ok(outpath)
+}
+
+#[cfg(feature = "archive_unzip")]
+fn check_zip_output_component(path: &Path, _overwrite_file: bool) -> std::io::Result<()> {
+    use std::io::ErrorKind;
+
+    let metadata = match file::symlink_metadata(path) {
+        Ok(metadata) => metadata,
+        Err(err) if err.kind() == ErrorKind::NotFound => return Ok(()),
+        Err(err) => return Err(err),
+    };
+    #[cfg(windows)]
+    {
+        use std::os::windows::fs::MetadataExt;
+        const FILE_ATTRIBUTE_REPARSE_POINT: u32 = 0x400;
+        if metadata.file_attributes() & FILE_ATTRIBUTE_REPARSE_POINT != 0 {
+            return Err(std::io::Error::new(
+                ErrorKind::InvalidData,
+                "ZIP extraction path contains a reparse point",
+            ));
+        }
+    }
+    if metadata.file_type().is_symlink() {
+        return Err(std::io::Error::new(
+            ErrorKind::InvalidData,
+            "ZIP extraction path contains a symbolic link",
+        ));
+    }
+    #[cfg(unix)]
+    if _overwrite_file && metadata.is_file() {
+        use std::os::unix::fs::MetadataExt;
+        if metadata.nlink() > 1 {
+            return Err(std::io::Error::new(
+                ErrorKind::InvalidData,
+                "ZIP extraction would overwrite a hard-linked file",
+            ));
         }
     }
     Ok(())
@@ -791,6 +872,61 @@ mod tests {
             "yep\n"
         );
         // tmpdir cleanup on drop
+    }
+
+    #[cfg(feature = "archive_unzip")]
+    #[test]
+    fn test_unzip_into_new_destination() {
+        let archive = Path::new(env!("CARGO_MANIFEST_DIR")).join("test/data/foo.zip");
+        let tmp = tempfile::tempdir().unwrap();
+        let destination = tmp.path().join("output");
+        unzip(&archive, &destination).unwrap();
+        assert_eq!(
+            fs::read_to_string(destination.join("foo/test.txt")).unwrap(),
+            "yep\n"
+        );
+    }
+
+    #[cfg(feature = "archive_unzip")]
+    #[test]
+    fn test_zip_output_path_validation() {
+        use std::io::ErrorKind;
+
+        let tmp = tempfile::tempdir().unwrap();
+        assert_eq!(
+            zip_output_path(tmp.path(), Path::new("./nested/file.txt"), false).unwrap(),
+            tmp.path().join("nested/file.txt")
+        );
+        for path in [tmp.path(), Path::new("."), Path::new("nested/..")] {
+            assert_eq!(
+                zip_output_path(tmp.path(), path, false).unwrap_err().kind(),
+                ErrorKind::InvalidData
+            );
+        }
+    }
+
+    #[cfg(all(feature = "archive_unzip", unix))]
+    #[test]
+    fn test_zip_output_path_rejects_existing_links() {
+        use std::io::ErrorKind;
+        use std::os::unix::fs::symlink;
+
+        let tmp = tempfile::tempdir().unwrap();
+        let directory = tmp.path().join("directory");
+        fs::create_dir(&directory).unwrap();
+        fs::write(directory.join("file.txt"), "unchanged").unwrap();
+        symlink(&directory, tmp.path().join("directory-link")).unwrap();
+        symlink(directory.join("file.txt"), tmp.path().join("file-link")).unwrap();
+        fs::hard_link(directory.join("file.txt"), tmp.path().join("hard-link")).unwrap();
+
+        for path in ["directory-link/child", "file-link", "hard-link"] {
+            assert_eq!(
+                zip_output_path(tmp.path(), Path::new(path), false)
+                    .unwrap_err()
+                    .kind(),
+                ErrorKind::InvalidData
+            );
+        }
     }
 
     #[cfg(feature = "archive_ungz")]
