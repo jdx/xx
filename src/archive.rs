@@ -139,6 +139,15 @@ pub fn untar_xz(archive: &Path, destination: &Path) -> XXResult<()> {
 /// ancestors and prevent concurrent changes to the extraction tree.
 #[cfg(feature = "archive_unzip")]
 pub fn unzip(archive: &Path, destination: &Path) -> XXResult<()> {
+    unzip_with_entry_names(archive, destination, |file| file.enclosed_name())
+}
+
+#[cfg(feature = "archive_unzip")]
+fn unzip_with_entry_names(
+    archive: &Path,
+    destination: &Path,
+    entry_name: impl Fn(&zip::read::ZipFile<'_, std::fs::File>) -> Option<std::path::PathBuf>,
+) -> XXResult<()> {
     let file = file::open(archive)?;
     let mut a = zip::ZipArchive::new(file)
         .map_err(|err| XXError::ArchiveZipError(err, archive.to_path_buf()))?;
@@ -151,7 +160,7 @@ pub fn unzip(archive: &Path, destination: &Path) -> XXResult<()> {
         let mut file = a
             .by_index(i)
             .map_err(|err| XXError::ArchiveZipError(err, archive.to_path_buf()))?;
-        let name = file.enclosed_name().ok_or_else(|| {
+        let name = entry_name(&file).ok_or_else(|| {
             XXError::ArchiveZipError(
                 zip::result::ZipError::InvalidArchive("invalid extraction path".into()),
                 archive.to_path_buf(),
@@ -915,6 +924,62 @@ mod tests {
             ));
         }
         assert_eq!(fs::read_dir(directory).unwrap().count(), 0);
+    }
+
+    #[cfg(feature = "archive_unzip")]
+    #[test]
+    fn test_unzip_stops_on_rejected_entry_name() {
+        let archive = Path::new(env!("CARGO_MANIFEST_DIR")).join("test/data/foo.zip");
+        let tmp = tempfile::tempdir().unwrap();
+
+        // Exercise a rejected name through the extraction loop without an
+        // archive containing an invalid name.
+        let error = unzip_with_entry_names(&archive, tmp.path(), |_| None).unwrap_err();
+        assert!(matches!(
+            error,
+            XXError::ArchiveZipError(zip::result::ZipError::InvalidArchive(reason), path)
+                if reason == "invalid extraction path" && path == archive
+        ));
+        assert_eq!(fs::read_dir(tmp.path()).unwrap().count(), 0);
+    }
+
+    #[cfg(all(feature = "archive_unzip", unix))]
+    #[test]
+    fn test_unzip_rejects_existing_entry_links() {
+        use std::io::ErrorKind;
+        use std::os::unix::fs::symlink;
+
+        let archive = Path::new(env!("CARGO_MANIFEST_DIR")).join("test/data/foo.zip");
+        for link_at_directory in [true, false] {
+            let tmp = tempfile::tempdir().unwrap();
+            let destination = tmp.path().join("output");
+            let peer = tmp.path().join("peer");
+            fs::create_dir(&destination).unwrap();
+            fs::create_dir(&peer).unwrap();
+            let sentinel = peer.join("test.txt");
+            fs::write(&sentinel, "unchanged").unwrap();
+
+            let directory = destination.join("foo");
+            let link = if link_at_directory {
+                symlink(&peer, &directory).unwrap();
+                directory
+            } else {
+                fs::create_dir(&directory).unwrap();
+                let file = directory.join("test.txt");
+                symlink(&sentinel, &file).unwrap();
+                file
+            };
+
+            let error = unzip(&archive, &destination).unwrap_err();
+            assert!(matches!(
+                error,
+                XXError::ArchiveIOError(err, path)
+                    if err.kind() == ErrorKind::InvalidData && path == destination
+            ));
+            assert!(fs::symlink_metadata(&link).unwrap().is_symlink());
+            assert_eq!(fs::read_to_string(sentinel).unwrap(), "unchanged");
+            assert_eq!(fs::read_dir(peer).unwrap().count(), 1);
+        }
     }
 
     #[cfg(feature = "archive_unzip")]
