@@ -16,6 +16,13 @@
 
 - Pin homedir to 0.3.5 for MSRV compatibility
 - Cargo build
+## [2.6.4](https://github.com/jdx/xx/compare/v2.6.3...v2.6.4) (2026-11-28)
+
+
+### Bug Fixes
+
+* **archive:** keep ZIP extraction inside the destination ([#341](https://github.com/jdx/xx/issues/341)) ([dcc1c7f](https://github.com/jdx/xx/commit/dcc1c7fbf43fcb2ccb819d635f490080e420a654))
+
 ## [2.6.3](https://github.com/jdx/xx/compare/v2.6.2...v2.6.3) (2026-10-16)
 
 
