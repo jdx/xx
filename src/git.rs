@@ -271,14 +271,14 @@ impl Git {
         let branch = git_cmd!(&self.dir, "branch", "--show-current")
             .read()
             .map_err(|err| XXError::GitError(err, self.dir.clone()))?;
-        debug!("current branch for {}: {}", self.dir.display(), &branch);
+        debug!("current branch for {}: {}", self.dir.display(), branch);
         Ok(branch)
     }
     pub fn current_sha(&self) -> XXResult<String> {
         let sha = git_cmd!(&self.dir, "rev-parse", "HEAD")
             .read()
             .map_err(|err| XXError::GitError(err, self.dir.clone()))?;
-        debug!("current sha for {}: {}", self.dir.display(), &sha);
+        debug!("current sha for {}: {}", self.dir.display(), sha);
         Ok(sha)
     }
 
@@ -286,7 +286,7 @@ impl Git {
         let sha = git_cmd!(&self.dir, "rev-parse", "--short", "HEAD")
             .read()
             .map_err(|err| XXError::GitError(err, self.dir.clone()))?;
-        debug!("current sha for {}: {}", self.dir.display(), &sha);
+        debug!("current sha for {}: {}", self.dir.display(), sha);
         Ok(sha)
     }
 
@@ -294,7 +294,7 @@ impl Git {
         let aref = git_cmd!(&self.dir, "rev-parse", "--abbrev-ref", "HEAD")
             .read()
             .map_err(|err| XXError::GitError(err, self.dir.clone()))?;
-        debug!("current abbrev ref for {}: {}", self.dir.display(), &aref);
+        debug!("current abbrev ref for {}: {}", self.dir.display(), aref);
         Ok(aref)
     }
 
@@ -305,7 +305,7 @@ impl Git {
         let res = git_cmd!(&self.dir, "config", "--get", "remote.origin.url").read();
         match res {
             Ok(url) => {
-                debug!("remote url for {}: {}", self.dir.display(), &url);
+                debug!("remote url for {}: {}", self.dir.display(), url);
                 Some(url)
             }
             Err(err) => {
@@ -1230,6 +1230,18 @@ fn get_git_version() -> Result<String> {
     Ok(version.trim().into())
 }
 
+#[derive(Default)]
+pub struct CloneOptions {
+    branch: Option<String>,
+}
+
+impl CloneOptions {
+    pub fn branch(mut self, branch: &str) -> Self {
+        self.branch = Some(branch.to_string());
+        self
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -1948,17 +1960,5 @@ mod tests {
 
         let options = CloneOptions::default().branch("main");
         assert_eq!(options.branch, Some("main".to_string()));
-    }
-}
-
-#[derive(Default)]
-pub struct CloneOptions {
-    branch: Option<String>,
-}
-
-impl CloneOptions {
-    pub fn branch(mut self, branch: &str) -> Self {
-        self.branch = Some(branch.to_string());
-        self
     }
 }
