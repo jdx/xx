@@ -31,18 +31,7 @@
 /// println!("Operating system: {}", os);
 /// ```
 pub fn os() -> &'static str {
-    match std::env::consts::OS {
-        "macos" => "macos",
-        "linux" => "linux",
-        "windows" => "windows",
-        "freebsd" => "freebsd",
-        "openbsd" => "openbsd",
-        "netbsd" => "netbsd",
-        "dragonfly" => "dragonfly",
-        "ios" => "ios",
-        "android" => "android",
-        other => other,
-    }
+    std::env::consts::OS
 }
 
 /// Get the current CPU architecture as a normalized string

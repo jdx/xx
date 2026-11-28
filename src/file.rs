@@ -229,6 +229,8 @@ pub fn touch_dir<P: AsRef<Path>>(dir: P) -> XXResult<()> {
     trace!("touch {}", dir.display());
     mkdirp(&dir)?;
     let now = filetime::FileTime::now();
+    // `std::fs::set_times` is newer than our MSRV (1.88), so keep filetime for now.
+    #[allow(deprecated)]
     filetime::set_file_times(&dir, now, now).map_err(|err| XXError::FileError(err, dir.clone()))?;
     Ok(())
 }
@@ -247,7 +249,7 @@ pub fn touch_dir<P: AsRef<Path>>(dir: P) -> XXResult<()> {
 /// ```
 pub fn ls<P: AsRef<Path>>(path: P) -> XXResult<Vec<PathBuf>> {
     let path = path.as_ref().to_path_buf();
-    debug!("ls: {:?}", &path);
+    debug!("ls: {:?}", path);
     let entries = fs::read_dir(&path).map_err(|err| XXError::FileError(err, path.clone()))?;
     let mut files = BTreeSet::new();
     for entry in entries {
@@ -609,6 +611,8 @@ pub fn touch_file<P: AsRef<Path>>(path: P) -> XXResult<()> {
         fs::File::create(path).map_err(|err| XXError::FileError(err, path.to_path_buf()))?;
     }
     let now = filetime::FileTime::now();
+    // `std::fs::set_times` is newer than our MSRV (1.88), so keep filetime for now.
+    #[allow(deprecated)]
     filetime::set_file_times(path, now, now)
         .map_err(|err| XXError::FileError(err, path.to_path_buf()))?;
     Ok(())
